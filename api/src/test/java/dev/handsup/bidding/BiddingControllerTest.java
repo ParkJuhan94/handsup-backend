@@ -77,6 +77,9 @@ class BiddingControllerTest extends ApiTestKafkaSupport {
 
     @BeforeEach
     void setUp() {
+        // PER_CLASS 라이프사이클이라 사용자 생성은 첫 테스트 전에 한 번만 일어나고, 테스트마다 테이블이 비워진다.
+        // 판매자를 다시 저장하지 않으면 두 번째 테스트부터 입찰자가 id 1을 받아 판매자와 같은 사람이 된다.
+        userRepository.save(seller);
         userRepository.save(bidder);
         accessTokenOfSeller = accessToken;
         accessTokenOfBidder = jwtProvider.createAccessToken(bidder.getId());
