@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.security.Key;
+import java.time.Duration;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,7 +36,7 @@ class JwtProviderTest {
 		byte[] keyBytes = Decoders.BASE64.decode(secretKey);
 		this.key = Keys.hmacShaKeyFor(keyBytes);
 		tokenValidSeconds = 3600;
-		jwtProvider = new JwtProvider(secretKey, tokenValidSeconds);
+		jwtProvider = new JwtProvider(secretKey, tokenValidSeconds, 14);
 	}
 
 	@Test
@@ -77,7 +78,7 @@ class JwtProviderTest {
 		assertThat(claims.getIssuedAt()).isNotNull();
 		assertThat(claims.getExpiration()).isNotNull();
 		assertThat(claims.getExpiration().getTime() - claims.getIssuedAt().getTime())
-			.isCloseTo(tokenValidSeconds * 1000L * 2 * 24 * 14, within(1000L));    // 토큰 생성 자체에 드는 시간 고려
+			.isCloseTo(Duration.ofDays(14).toMillis(), within(1000L));    // 토큰 생성 자체에 드는 시간 고려
 	}
 
 	@Test
@@ -118,10 +119,21 @@ class JwtProviderTest {
 	}
 
 	@Test
+	@DisplayName("[같은 사용자의 Refresh Token은 같은 초에 발급해도 서로 다르다]")
+	void createRefreshTokenIsUniqueTest() {
+		// when
+		String first = jwtProvider.createRefreshToken(userId);
+		String second = jwtProvider.createRefreshToken(userId);
+
+		// then
+		assertThat(first).isNotEqualTo(second);
+	}
+
+	@Test
 	@DisplayName("[유효성 검사에서 유효 기간이 지난 토큰은 실패한다]")
 	void validateExpiredTokenTest() {
 		// given
-		jwtProvider = new JwtProvider(secretKey, -1000000);
+		jwtProvider = new JwtProvider(secretKey, -1000000, 14);
 		String expiredToken = jwtProvider.createAccessToken(userId);
 
 		// when, then

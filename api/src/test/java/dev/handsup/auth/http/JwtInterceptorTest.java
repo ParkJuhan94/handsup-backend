@@ -76,6 +76,7 @@ class JwtInterceptorTest {
 
         // when, then
         assertThat(jwtInterceptor.preHandle(mockHttpServletRequest, response, handlerMethod)).isFalse();
+        verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
     }
 
 }
