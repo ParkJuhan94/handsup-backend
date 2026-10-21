@@ -12,7 +12,7 @@
 실행
   python3 scripts/seed_local_data.py
   환경변수: API(기본 http://localhost:8082), FE(기본 http://localhost:3004), SEED_IMAGE_DIR,
-            MYSQL_CONTAINER(기본 hands-up-mysql), REDIS_CONTAINER(기본 hands-up-redis)
+            MYSQL_CONTAINER(기본 handsup-mysql), REDIS_CONTAINER(기본 handsup-redis)
   DB가 비어 있을 때만 실행한다. 다시 넣으려면 DB를 비우거나 --force 로 실행한다.
 
 계정: 아래 USERS의 이메일 + 비밀번호 PASSWORD (로컬 개발 전용 값)
@@ -24,8 +24,8 @@ API = os.environ.get("API", "http://localhost:8082")
 FE = os.environ.get("FE", "http://localhost:3004")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 IMAGE_DIR = os.environ.get("SEED_IMAGE_DIR", os.path.normpath(os.path.join(ROOT, "..", "frontend", "public", "seed")))
-MYSQL_CONTAINER = os.environ.get("MYSQL_CONTAINER", "hands-up-mysql")
-REDIS_CONTAINER = os.environ.get("REDIS_CONTAINER", "hands-up-redis")
+MYSQL_CONTAINER = os.environ.get("MYSQL_CONTAINER", "handsup-mysql")
+REDIS_CONTAINER = os.environ.get("REDIS_CONTAINER", "handsup-redis")
 PASSWORD = "pass1234!"  # 로컬 개발 전용
 random.seed(7)
 
