@@ -15,6 +15,7 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.KafkaAdmin;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
 import dev.handsup.bidding.event.BiddingEvent;
@@ -48,13 +49,17 @@ public class KafkaConsumerConfig {
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServersConsumer);
         config.put(ConsumerConfig.GROUP_ID_CONFIG, "bidding-consumer-group");
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        config.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
         config.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
 
+        // 역직렬화 자체가 깨지는 메시지(포맷 불일치, 알 수 없는 enum 값 등)를 ErrorHandlingDeserializer로 감싼다.
+        // 감싸지 않으면 컨슈머가 같은 오프셋을 무한히 다시 읽어 로그가 폭주한다. 감싸면 예외로 넘어가
+        // 에러 핸들러가 DLT로 보내고 오프셋을 넘긴다.
         return new DefaultKafkaConsumerFactory<>(
             config,
             new StringDeserializer(),
-            new JsonDeserializer<>(BiddingEvent.class)
+            new ErrorHandlingDeserializer<>(new JsonDeserializer<>(BiddingEvent.class))
         );
     }
 

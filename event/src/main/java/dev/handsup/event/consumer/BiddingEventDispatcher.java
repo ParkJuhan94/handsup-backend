@@ -47,6 +47,7 @@ public class BiddingEventDispatcher {
     private final SlackNotificationService slackNotificationService;
 
     @RetryableTopic(attempts = "4", // 최초 1회 + retry 3회
+        kafkaTemplate = "retryKafkaTemplate", // 역직렬화 실패 메시지의 원본 byte[]를 훼손하지 않고 DLT로 보낸다
         backoff = @Backoff(delay = 2000, // 1초 후 첫 재시도
             multiplier = 2.0, // 이후 2초 → 4초
             maxDelay = 5000 // 최대 5초까지만 delay
