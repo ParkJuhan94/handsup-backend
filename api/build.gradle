@@ -24,6 +24,7 @@ dependencies {
     runtimeOnly 'me.paulschwarz:spring-dotenv:4.0.0'
 
     // --- Kafka For Test ---
+    testImplementation 'org.springframework.kafka:spring-kafka'  // 테스트에서 리스너 레지스트리(파티션 할당 대기)를 쓰기 위함
     testImplementation 'org.springframework.kafka:spring-kafka-test'
 }
 
