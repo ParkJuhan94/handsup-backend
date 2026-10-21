@@ -10,7 +10,6 @@ import dev.handsup.auth.domain.BlacklistToken;
 import dev.handsup.auth.domain.EncryptHelper;
 import dev.handsup.auth.dto.request.LoginRequest;
 import dev.handsup.auth.dto.response.LoginDetailResponse;
-import dev.handsup.auth.dto.response.TokenReIssueResponse;
 import dev.handsup.auth.exception.AuthErrorCode;
 import dev.handsup.auth.repository.AuthRepository;
 import dev.handsup.auth.repository.BlacklistTokenRepository;
@@ -70,29 +69,36 @@ public class AuthService {
 
 	@Transactional
 	public void logout(User user) {
-		authRepository.findByUserId(user.getId()).ifPresentOrElse(
-			auth ->
-				blacklistTokenRepository.save(
-					BlacklistToken.builder()
-						.refreshToken(auth.getRefreshToken())
-						.build()),
-			() -> {
-				throw new NotFoundException(AuthErrorCode.NOT_FOUND_USER_ID);
-			}
-		);
+		Auth auth = authRepository.findByUserId(user.getId())
+			.orElseThrow(() -> new NotFoundException(AuthErrorCode.NOT_FOUND_USER_ID));
+		String refreshToken = auth.getRefreshToken();
+
+		if (!blacklistTokenRepository.existsByRefreshToken(refreshToken)) {
+			blacklistTokenRepository.save(BlacklistToken.from(refreshToken));
+		}
 	}
 
-	public TokenReIssueResponse createAccessTokenByRefreshToken(String refreshTokenFromCookies) {
-		boolean isBlacklisted = blacklistTokenRepository.existsByRefreshToken(refreshTokenFromCookies);
-		if (isBlacklisted) {
+	// refresh 토큰을 회전한다: 서명·만료 검증 -> 블랙리스트 확인 -> 새 토큰으로 교체 -> 이전 토큰을 블랙리스트에 등록
+	@Transactional
+	public LoginDetailResponse reIssueTokens(String refreshToken) {
+		jwtProvider.validateToken(refreshToken);
+
+		if (blacklistTokenRepository.existsByRefreshToken(refreshToken)) {
 			throw new ValidationException(AuthErrorCode.BLACKLISTED_TOKEN);
 		}
 
-		Auth auth = getAuthByRefreshToken(refreshTokenFromCookies);
+		Auth auth = getAuthByRefreshToken(refreshToken);
 		Long userId = userService.getUserById(auth.getUserId()).getId();
-		String accessToken = jwtProvider.createAccessToken(userId);
+		String newRefreshToken = jwtProvider.createRefreshToken(userId);
 
-		return TokenReIssueResponse.from(accessToken);
+		int rotated = authRepository.rotateRefreshToken(auth.getId(), refreshToken, newRefreshToken);
+		if (rotated == 0) {
+			// 동시에 들어온 다른 요청이 먼저 이 토큰을 교체했다
+			throw new ValidationException(AuthErrorCode.BLACKLISTED_TOKEN);
+		}
+		blacklistTokenRepository.save(BlacklistToken.from(refreshToken));
+
+		return LoginDetailResponse.of(newRefreshToken, jwtProvider.createAccessToken(userId));
 	}
 
 }

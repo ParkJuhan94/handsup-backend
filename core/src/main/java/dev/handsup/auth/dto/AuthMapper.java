@@ -35,13 +35,21 @@ public class AuthMapper {
 		throw new NotFoundException(AuthErrorCode.NOT_FOUND_ACCESS_TOKEN_IN_REQUEST);
 	}
 
-	public static ResponseCookie toCookie(LoginDetailResponse response) {
-		return ResponseCookie.from("refreshToken", response.refreshToken())
+	public static ResponseCookie toCookie(LoginDetailResponse response, Duration maxAge) {
+		return refreshCookie(response.refreshToken(), maxAge);
+	}
+
+	public static ResponseCookie toExpiredCookie() {
+		return refreshCookie("", Duration.ZERO);
+	}
+
+	private static ResponseCookie refreshCookie(String value, Duration maxAge) {
+		return ResponseCookie.from("refreshToken", value)
 			.path("/")
-			.sameSite("None")
+			.sameSite("Lax")
 			.httpOnly(true)
-			.secure(false)
-			.maxAge(Duration.ofDays(15))
+			.secure(true)
+			.maxAge(maxAge)
 			.build();
 	}
 

@@ -3,7 +3,9 @@ package dev.handsup.auth.service;
 import static dev.handsup.auth.exception.AuthErrorCode.*;
 
 import java.security.Key;
+import java.time.Duration;
 import java.util.Date;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -20,13 +22,16 @@ public class JwtProvider {
 
 	private static final String USER_ID = "userId";
 	private final int tokenValidSeconds;
+	private final Duration refreshTokenValidity;
 	private final Key key;
 
 	public JwtProvider(
 		@Value("${jwt.secret}") String secretKey,
-		@Value("${jwt.token-validity-in-seconds}") int tokenValidSeconds
+		@Value("${jwt.token-validity-in-seconds}") int tokenValidSeconds,
+		@Value("${jwt.refresh-token-validity-in-days}") int refreshTokenValidityDays
 	) {
 		this.tokenValidSeconds = tokenValidSeconds;
+		this.refreshTokenValidity = Duration.ofDays(refreshTokenValidityDays);
 
 		byte[] keyBytes = Decoders.BASE64.decode(secretKey);
 		this.key = Keys.hmacShaKeyFor(keyBytes);
@@ -49,7 +54,7 @@ public class JwtProvider {
 			.setHeaderParam("type", "jwt")
 			.claim(USER_ID, userId)
 			.setIssuedAt(now)
-			.setExpiration(new Date(now.getTime() + tokenValidSeconds * 1000L))    // 30분
+			.setExpiration(new Date(now.getTime() + tokenValidSeconds * 1000L))
 			.signWith(key, SignatureAlgorithm.HS256)
 			.compact();
 	}
@@ -60,10 +65,15 @@ public class JwtProvider {
 		return Jwts.builder()
 			.setHeaderParam("type", "jwt")
 			.claim(USER_ID, userId)
+			.setId(UUID.randomUUID().toString())    // 같은 초에 발급해도 토큰이 겹치지 않게 한다(refresh 회전 시 unique 충돌 방지)
 			.setIssuedAt(now)
-			.setExpiration(new Date(now.getTime() + tokenValidSeconds * 1000L * 2 * 24 * 14))    // 14일
+			.setExpiration(new Date(now.getTime() + refreshTokenValidity.toMillis()))
 			.signWith(key, SignatureAlgorithm.HS256)
 			.compact();
+	}
+
+	public Duration getRefreshTokenValidity() {
+		return refreshTokenValidity;
 	}
 
 	public void validateToken(String token) {
