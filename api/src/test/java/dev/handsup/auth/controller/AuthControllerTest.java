@@ -47,7 +47,10 @@ class AuthControllerTest extends ApiTestSupport {
             .andDo(MockMvcResultHandlers.print())
             .andExpect(jsonPath("$.accessToken").exists())
             .andExpect(cookie().exists("refreshToken"))
-            .andExpect(cookie().value("refreshToken", not(emptyOrNullString())));
+            .andExpect(cookie().value("refreshToken", not(emptyOrNullString())))
+            .andExpect(cookie().secure("refreshToken", true))
+            .andExpect(cookie().httpOnly("refreshToken", true))
+            .andExpect(cookie().sameSite("refreshToken", "Lax"));
     }
 
     @Test
@@ -88,5 +91,64 @@ class AuthControllerTest extends ApiTestSupport {
         // then
         actions.andExpect(status().isOk())
             .andDo(MockMvcResultHandlers.print());
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("[재발급하면 refresh 토큰이 교체되고, 이전 토큰으로는 다시 재발급할 수 없다]")
+    void reIssueRotatesRefreshTokenTest() throws Exception {
+        // given
+        String oldRefreshToken = authService.login(loginRequest).refreshToken();
+
+        // when: 첫 재발급은 성공하고 새 refresh 쿠키가 내려온다
+        ResultActions first = mockMvc.perform(
+            post("/api/auth/token").cookie(new Cookie("refreshToken", oldRefreshToken))
+        );
+        first.andExpect(status().isOk())
+            .andExpect(jsonPath("$.accessToken").exists())
+            .andExpect(cookie().value("refreshToken", not(oldRefreshToken)));
+
+        // then: 이미 사용한 토큰으로 다시 요청하면 실패한다
+        mockMvc.perform(post("/api/auth/token").cookie(new Cookie("refreshToken", oldRefreshToken)))
+            .andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("[서명이 틀린 refresh 토큰으로는 재발급할 수 없다]")
+    void reIssueWithForgedRefreshTokenTest() throws Exception {
+        // given
+        String refreshToken = authService.login(loginRequest).refreshToken();
+        String forged = refreshToken.substring(0, refreshToken.length() - 4) + "abcd";
+
+        // when & then
+        mockMvc.perform(post("/api/auth/token").cookie(new Cookie("refreshToken", forged)))
+            .andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("[로그아웃하면 refresh 쿠키가 만료되고 그 토큰으로 재발급할 수 없다]")
+    void logoutBlocksReIssueTest() throws Exception {
+        // given
+        LoginDetailResponse login = authService.login(loginRequest);
+
+        // when
+        mockMvc.perform(
+                post("/api/auth/logout").header(AUTHORIZATION, "Bearer " + login.accessToken())
+            )
+            .andExpect(status().isOk())
+            .andExpect(cookie().maxAge("refreshToken", 0));
+
+        // then
+        mockMvc.perform(post("/api/auth/token").cookie(new Cookie("refreshToken", login.refreshToken())))
+            .andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    @DisplayName("[만료되거나 변조된 access 토큰은 401로 응답한다]")
+    void invalidAccessTokenReturns401Test() throws Exception {
+        mockMvc.perform(post("/api/auth/logout").header(AUTHORIZATION, "Bearer invalid.token.value"))
+            .andExpect(status().isUnauthorized());
     }
 }

@@ -23,6 +23,7 @@ import dev.handsup.auth.exception.AuthErrorCode;
 import dev.handsup.auth.repository.AuthRepository;
 import dev.handsup.auth.repository.BlacklistTokenRepository;
 import dev.handsup.common.exception.NotFoundException;
+import dev.handsup.common.exception.ValidationException;
 import dev.handsup.fixture.UserFixture;
 import dev.handsup.user.domain.User;
 import dev.handsup.user.service.UserService;
@@ -108,5 +109,85 @@ class AuthServiceTest {
 		assertThatThrownBy(() -> authService.logout(user))
 			.isInstanceOf(NotFoundException.class)
 			.hasMessageContaining(NOT_FOUND_USER_ID.getMessage());
+	}
+
+	@Test
+	@DisplayName("[이미 블랙리스트에 있는 토큰이면 로그아웃을 다시 호출해도 중복 저장하지 않는다]")
+	void logoutTwiceTest() {
+		// given
+		Auth auth = Auth.of(1L, "refresh-token");
+		when(authRepository.findByUserId(1L)).thenReturn(Optional.of(auth));
+		when(blacklistTokenRepository.existsByRefreshToken("refresh-token")).thenReturn(true);
+
+		// when
+		authService.logout(user);
+
+		// then
+		verify(blacklistTokenRepository, never()).save(any(BlacklistToken.class));
+	}
+
+	@Test
+	@DisplayName("[재발급하면 서명을 검증하고 refresh 토큰을 교체한 뒤 이전 토큰을 블랙리스트에 올린다]")
+	void reIssueTokensSuccessTest() {
+		// given
+		Auth auth = Auth.of(1L, "old-refresh");
+		when(blacklistTokenRepository.existsByRefreshToken("old-refresh")).thenReturn(false);
+		when(authRepository.findByRefreshToken("old-refresh")).thenReturn(Optional.of(auth));
+		when(userService.getUserById(auth.getUserId())).thenReturn(user);
+		when(jwtProvider.createRefreshToken(user.getId())).thenReturn("new-refresh");
+		when(jwtProvider.createAccessToken(user.getId())).thenReturn("new-access");
+		when(authRepository.rotateRefreshToken(auth.getId(), "old-refresh", "new-refresh")).thenReturn(1);
+
+		// when
+		LoginDetailResponse response = authService.reIssueTokens("old-refresh");
+
+		// then
+		assertEquals("new-access", response.accessToken());
+		assertEquals("new-refresh", response.refreshToken());
+		verify(jwtProvider).validateToken("old-refresh");
+		verify(blacklistTokenRepository).save(any(BlacklistToken.class));
+	}
+
+	@Test
+	@DisplayName("[서명이 틀리거나 만료된 토큰이면 DB를 조회하기 전에 실패한다]")
+	void reIssueTokensInvalidTokenTest() {
+		// given
+		doThrow(new ValidationException(TOKEN_EXPIRED)).when(jwtProvider).validateToken("expired");
+
+		// when & then
+		assertThatThrownBy(() -> authService.reIssueTokens("expired"))
+			.isInstanceOf(ValidationException.class)
+			.hasMessageContaining(TOKEN_EXPIRED.getMessage());
+		verifyNoInteractions(authRepository);
+	}
+
+	@Test
+	@DisplayName("[블랙리스트에 있는 토큰으로는 재발급할 수 없다]")
+	void reIssueTokensBlacklistedTest() {
+		// given
+		when(blacklistTokenRepository.existsByRefreshToken("used")).thenReturn(true);
+
+		// when & then
+		assertThatThrownBy(() -> authService.reIssueTokens("used"))
+			.isInstanceOf(ValidationException.class)
+			.hasMessageContaining(BLACKLISTED_TOKEN.getMessage());
+		verify(authRepository, never()).rotateRefreshToken(anyLong(), anyString(), anyString());
+	}
+
+	@Test
+	@DisplayName("[동시에 들어온 요청이 먼저 토큰을 교체했다면 재발급에 실패한다]")
+	void reIssueTokensRaceTest() {
+		// given
+		Auth auth = Auth.of(1L, "old-refresh");
+		when(authRepository.findByRefreshToken("old-refresh")).thenReturn(Optional.of(auth));
+		when(userService.getUserById(auth.getUserId())).thenReturn(user);
+		when(jwtProvider.createRefreshToken(user.getId())).thenReturn("new-refresh");
+		when(authRepository.rotateRefreshToken(auth.getId(), "old-refresh", "new-refresh")).thenReturn(0);
+
+		// when & then
+		assertThatThrownBy(() -> authService.reIssueTokens("old-refresh"))
+			.isInstanceOf(ValidationException.class)
+			.hasMessageContaining(BLACKLISTED_TOKEN.getMessage());
+		verify(blacklistTokenRepository, never()).save(any(BlacklistToken.class));
 	}
 }
