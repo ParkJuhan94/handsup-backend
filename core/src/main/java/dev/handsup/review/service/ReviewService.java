@@ -1,5 +1,8 @@
 package dev.handsup.review.service;
 
+import java.util.Comparator;
+import java.util.List;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
@@ -9,6 +12,7 @@ import dev.handsup.auction.domain.Auction;
 import dev.handsup.auction.exception.AuctionErrorCode;
 import dev.handsup.auction.repository.auction.AuctionRepository;
 import dev.handsup.bidding.domain.Bidding;
+import dev.handsup.bidding.domain.TradingStatus;
 import dev.handsup.bidding.exception.BiddingErrorCode;
 import dev.handsup.bidding.repository.BiddingRepository;
 import dev.handsup.common.dto.CommonMapper;
@@ -87,8 +91,14 @@ public class ReviewService {
 		return CommonMapper.toPageResponse(reviewResponsePage);
 	}
 
+	// 한 사람이 같은 경매에 여러 번 입찰할 수 있다. 리뷰에는 거래가 완료된 입찰을 우선하고,
+	// 없으면 가장 높은 입찰가의 입찰을 쓴다.
 	private Bidding getBidding(Auction auction, User bidder) {
-		return biddingRepository.findByAuctionAndBidder(auction, bidder)
+		List<Bidding> biddings = biddingRepository.findAllByAuctionAndBidder(auction, bidder);
+		return biddings.stream()
+			.filter(bidding -> bidding.getTradingStatus() == TradingStatus.COMPLETED)
+			.findFirst()
+			.or(() -> biddings.stream().max(Comparator.comparingInt(Bidding::getBiddingPrice)))
 			.orElseThrow(() -> new NotFoundException(BiddingErrorCode.NOT_FOUND_BIDDING_BY_AUCTION_AND_BIDDER));
 	}
 }

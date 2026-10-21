@@ -20,7 +20,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 import dev.handsup.auction.domain.Auction;
 import dev.handsup.auction.repository.auction.AuctionRepository;
 import dev.handsup.bidding.domain.Bidding;
+import dev.handsup.bidding.domain.TradingStatus;
 import dev.handsup.bidding.repository.BiddingRepository;
+import dev.handsup.common.exception.NotFoundException;
 import dev.handsup.fixture.AuctionFixture;
 import dev.handsup.fixture.BiddingFixture;
 import dev.handsup.fixture.ReviewFixture;
@@ -107,8 +109,8 @@ class ReviewServiceTest {
 
 		Bidding bidding = BiddingFixture.bidding(auction, writer);
 		ReflectionTestUtils.setField(bidding, "updatedAt", LocalDateTime.now());
-		given(biddingRepository.findByAuctionAndBidder(auction, writer)).willReturn(
-			Optional.of(bidding));
+		given(biddingRepository.findAllByAuctionAndBidder(auction, writer)).willReturn(
+			List.of(bidding));
 
 		// when
 		ReviewDetailResponse response = reviewService.registerReview(request, auctionId, writer);
@@ -119,5 +121,70 @@ class ReviewServiceTest {
 		assertThat(response.content()).isEqualTo(expectedContent);
 		assertThat(response.auctionId()).isEqualTo(expectedAuctionId);
 		assertThat(response.writerId()).isEqualTo(expectedWriterId);
+	}
+
+	@Test
+	@MockitoSettings(strictness = Strictness.LENIENT)
+	@DisplayName("[같은 경매에 여러 번 입찰했다면 거래가 완료된 입찰로 리뷰를 등록한다]")
+	void registerReview_multipleBiddings_prefersCompleted() {
+		// given
+		Bidding waiting = biddingWith(1L, 95000, TradingStatus.WAITING);
+		Bidding completed = biddingWith(2L, 92000, TradingStatus.COMPLETED);
+		stubReviewDependencies(List.of(waiting, completed));
+
+		// when
+		ReviewDetailResponse response = reviewService.registerReview(requestOf(), auction.getId(), writer);
+
+		// then
+		assertThat(response.winningPrice()).isEqualTo(92000);
+	}
+
+	@Test
+	@MockitoSettings(strictness = Strictness.LENIENT)
+	@DisplayName("[완료된 입찰이 없으면 가장 높은 입찰가의 입찰로 리뷰를 등록한다]")
+	void registerReview_multipleBiddings_fallsBackToHighestPrice() {
+		// given
+		Bidding low = biddingWith(1L, 80000, TradingStatus.WAITING);
+		Bidding high = biddingWith(2L, 95000, TradingStatus.WAITING);
+		stubReviewDependencies(List.of(low, high));
+
+		// when
+		ReviewDetailResponse response = reviewService.registerReview(requestOf(), auction.getId(), writer);
+
+		// then
+		assertThat(response.winningPrice()).isEqualTo(95000);
+	}
+
+	@Test
+	@MockitoSettings(strictness = Strictness.LENIENT)
+	@DisplayName("[입찰이 없으면 리뷰를 등록할 수 없다]")
+	void registerReview_noBidding_throws() {
+		// given
+		stubReviewDependencies(List.of());
+
+		// when & then
+		assertThatThrownBy(() -> reviewService.registerReview(requestOf(), auction.getId(), writer))
+			.isInstanceOf(NotFoundException.class);
+	}
+
+	private RegisterReviewRequest requestOf() {
+		return RegisterReviewRequest.of(review.getEvaluationScore(), review.getContent(), reviewLabelIds);
+	}
+
+	private Bidding biddingWith(Long id, int price, TradingStatus status) {
+		Bidding bidding = new Bidding(id, price, auction, writer, status);
+		ReflectionTestUtils.setField(bidding, "updatedAt", LocalDateTime.now());
+		return bidding;
+	}
+
+	private void stubReviewDependencies(List<Bidding> biddings) {
+		given(auctionRepository.findById(auction.getId())).willReturn(Optional.of(auction));
+		given(reviewRepository.save(any(Review.class))).willReturn(review);
+		ReflectionTestUtils.setField(review, "createdAt", LocalDateTime.now());
+		given(reviewLabelRepository.findById(reviewLabelManner.getId())).willReturn(Optional.of(reviewLabelManner));
+		given(reviewLabelRepository.findById(reviewLabelCheap.getId())).willReturn(Optional.of(reviewLabelCheap));
+		given(userReviewLabelRepository.save(any(UserReviewLabel.class)))
+			.willReturn(userReviewLabelManner, userReviewLabelCheap);
+		given(biddingRepository.findAllByAuctionAndBidder(auction, writer)).willReturn(biddings);
 	}
 }
