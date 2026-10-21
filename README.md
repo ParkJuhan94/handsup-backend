@@ -139,6 +139,20 @@ docker compose --env-file .env up -d mysql redis redpanda
 ```
 
 - Swagger : http://localhost:8082/swagger-ui/index.html
+
+### 테스트 데이터 넣기
+
+빈 DB에 화면 확인용 데이터(사용자 6명, 경매 22건과 이미지, 입찰, 북마크, 댓글, 채팅방, 거래 완료와 리뷰)를 실제 API로 넣는 스크립트가 있습니다.
+
+```bash
+pip install pillow                       # 이미지 생성용(최초 1회)
+python3 scripts/seed_local_data.py       # 서버(8082)와 인프라가 떠 있어야 합니다
+```
+
+- 이미지는 `../frontend/public/seed/`에 만들고 프론트(3004)가 서빙합니다. 경로나 주소는 `SEED_IMAGE_DIR`, `FE`, `API` 환경변수로 바꿀 수 있습니다.
+- 계정은 `tester@naver.com`, `minji_seller@naver.com`, `junho_seller@naver.com`, `sora_buyer@naver.com`, `dohyun_buyer@naver.com`, `yuna_collector@naver.com`이고 비밀번호는 스크립트의 `PASSWORD`입니다(로컬 개발 전용).
+- 경매가 이미 있으면 중단합니다. 다시 넣으려면 DB를 비우거나 `--force`를 붙입니다.
+- 추천 목록은 서버 메모리에 5분 캐시되므로, 넣은 직후에는 홈 화면이 비어 보일 수 있습니다.
 - 프론트와 연결하려면 [handsup-frontend](https://github.com/ParkJuhan94/handsup-frontend)를 `npm run dev`로 띄웁니다(3004). 로컬 프론트 출처(3000, 3004)는 CORS 기본 허용 목록에 들어 있습니다.
 - 컨테이너마다 메모리 상한(mysql 768M, redis 256M, redpanda 900M)을 걸어 두었습니다.
 
