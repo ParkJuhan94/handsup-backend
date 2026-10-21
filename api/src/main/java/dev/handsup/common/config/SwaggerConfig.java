@@ -22,7 +22,7 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
         description = "경매 중고 거래 API 명세서",
         version = "v.0.1"),
     servers = {
-        @Server(url = "http://localhost:8080", description = "Default Server URL")
+        @Server(url = "http://localhost:8082", description = "Default Server URL")
     }
 )
 

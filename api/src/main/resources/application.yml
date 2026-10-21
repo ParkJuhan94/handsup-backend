@@ -39,8 +39,9 @@ spring:
       topic:
         enabled: true
 
+# 로컬 기본 포트. 운영(application-prod.yml)은 컨테이너 포트 매핑(8080)에 맞춰 8080을 쓴다.
 server:
-  port: 8080
+  port: 8082
 
 elasticsearch:
   host: ${ELASTICSEARCH_HOST:localhost}
@@ -83,9 +84,9 @@ cloud:
     stack:
       auto: false
 
-# 로컬 개발용 프론트 출처(Next.js 기본 3000, 포트가 겹칠 때 쓰는 3004)와 Swagger UI(8080). 쉼표로 구분한다.
+# 로컬 개발용 프론트 출처(Next.js 기본 3000, 포트가 겹칠 때 쓰는 3004)와 Swagger UI(8082). 쉼표로 구분한다.
 cors:
-  allowed-origins: http://localhost:3000,http://localhost:3004,http://localhost:8080,https://localhost:8080
+  allowed-origins: http://localhost:3000,http://localhost:3004,http://localhost:8082,https://localhost:8082
 
 jwt:
   secret: ${JWT_SECRET}
