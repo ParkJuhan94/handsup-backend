@@ -21,7 +21,8 @@ public class WebConfig implements WebMvcConfigurer {
     private final JwtAuthorizationArgumentResolver jwtAuthorizationArgumentResolver;
     private final JwtInterceptor jwtInterceptor;
 
-    // 쉼표로 여러 출처를 줄 수 있다. 프론트를 다른 포트/도메인에서 띄울 때 CORS_ALLOWED_ORIGINS 환경변수로 지정한다.
+    // 쉼표로 여러 출처를 줄 수 있다. 값은 application.yml(로컬)·application-prod.yml(운영)의 cors.allowed-origins에 있다.
+    // 필요하면 CORS_ALLOWED_ORIGINS 환경변수로도 덮어쓸 수 있다.
     @Value("${cors.allowed-origins:http://localhost:8080,https://localhost:8080}")
     private String[] allowedOrigins;
 

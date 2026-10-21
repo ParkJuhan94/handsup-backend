@@ -83,6 +83,10 @@ cloud:
     stack:
       auto: false
 
+# 로컬 개발용 프론트 출처(Next.js 기본 3000, 포트가 겹칠 때 쓰는 3004)와 Swagger UI(8080). 쉼표로 구분한다.
+cors:
+  allowed-origins: http://localhost:3000,http://localhost:3004,http://localhost:8080,https://localhost:8080
+
 jwt:
   secret: ${JWT_SECRET}
   token-validity-in-seconds: 1800            # access 30분
