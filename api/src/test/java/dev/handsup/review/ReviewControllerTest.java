@@ -82,6 +82,36 @@ class ReviewControllerTest extends ApiTestSupport {
 
     @Test
     @Transactional
+    @DisplayName("[리뷰 등록 API] 같은 경매에 여러 번 입찰했어도 거래가 완료된 입찰로 리뷰를 등록한다")
+    void registerReviewWithMultipleBiddingsTest() throws Exception {
+        // given
+        fcmTokenRepository.saveFcmToken(auction.getSeller().getEmail(), "fcmToken123");
+        ReflectionTestUtils.setField(auction, "status", AuctionStatus.TRADING);
+        Long auctionId = auction.getId();
+        ReflectionTestUtils.setField(review, "createdAt", LocalDateTime.now());
+
+        Bidding completed = new Bidding(
+            this.auction.getInitPrice() + 1000, this.auction, user, TradingStatus.PROGRESSING);
+        biddingRepository.save(completed);
+        // 같은 사람의 더 높은 입찰이 하나 더 있다
+        biddingRepository.save(new Bidding(
+            this.auction.getInitPrice() + 5000, this.auction, user, TradingStatus.WAITING));
+        biddingService.completeTrading(completed.getId(), user);
+
+        RegisterReviewRequest request = RegisterReviewRequest.of(
+            review.getEvaluationScore(), review.getContent(), reviewLabelIds);
+
+        // when & then: 입찰이 2건이어도 500이 아니라 완료된 입찰 기준으로 등록된다
+        mockMvc.perform(post("/api/auctions/{auctionId}/reviews", auctionId)
+                .header(AUTHORIZATION, "Bearer " + accessToken)
+                .contentType(APPLICATION_JSON)
+                .content(toJson(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.winningPrice").value(completed.getBiddingPrice()));
+    }
+
+    @Test
+    @Transactional
     @DisplayName("[리뷰 등록 API] 작성자가 경매에 대한 리뷰를 등록한다")
     void registerReviewTest() throws Exception {
         // given

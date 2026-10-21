@@ -1,5 +1,6 @@
 package dev.handsup.bidding.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Pageable;
@@ -31,7 +32,7 @@ public interface BiddingRepository extends JpaRepository<Bidding, Long> {
 
 	Slice<Bidding> findByAuctionIdOrderByBiddingPriceDesc(Long auctionId, Pageable pageable);
 
-	Optional<Bidding> findByAuctionAndBidder(Auction auction, User bidder);
+	List<Bidding> findAllByAuctionAndBidder(Auction auction, User bidder);
 
 	Slice<Bidding> findByBidderOrderByAuction_CreatedAtDesc(User bidder, Pageable pageable);
 
