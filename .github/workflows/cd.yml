@@ -1,11 +1,8 @@
 name: 📌 CD Backend
 
+# 배포 서버를 꺼둔 상태라 push로 자동 배포하지 않는다. 배포가 필요하면 Actions 탭에서 수동 실행한다.
 on:
-  push:
-    branches: [ "main" ]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
+  workflow_dispatch:
 
 permissions:
   contents: read
