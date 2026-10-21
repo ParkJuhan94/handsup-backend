@@ -22,11 +22,20 @@
 
 ## 팀 단계와 개인 고도화
 
+개인 고도화 항목은 모두 이 저장소의 커밋으로 확인할 수 있습니다(괄호는 PR 번호).
+
 | 구분 | 내용 |
 |------|------|
-| 팀 단계 (2024.02 ~ 06) | JWT 액세스·리프레시 인증과 인터셉터, 경매·입찰·리뷰·알림 도메인, DB 조회 최적화와 캐시 도입, 성능 테스트. 배포 파이프라인은 팀원이 구축 |
-| 개인 고도화 (2025) | Docker·CD 재구성, 추천 API 2단 캐시, 입찰 알림 Kafka 분리(재시도·DLT·중복 처리), Kafka 별도 서버 분리 |
-| 개인 고도화 (2026, Claude Code) | 분산 락 순서 버그 수정, 인증 토큰 회전(#104), 포이즌 필 처리(#110), 로컬 환경 정리 |
+| 팀 단계 (2024.02 ~ 06) | JWT 액세스·리프레시 인증과 인터셉터, 경매·입찰·리뷰·알림 API, DB 조회 최적화와 캐시 도입(#148), 성능 테스트. 배포 파이프라인·분산 락·인기 검색어는 팀원이 구현 |
+| 개인 · 인프라 (2025.03 ~ 04) | Docker 이미지 빌드 단계와 Compose 구성, MySQL 헬스체크와 wait-for-it으로 기동 순서 보장(#11), CD 재작업(scp·ssh 액션, SSH 키 접속)(#16, #27), Swagger 서버를 로컬 한정, 프론트 연동 CORS(#28) |
+| 개인 · CI·품질 (2025.03 ~ 06) | CI에 MySQL·Redis·Kafka 서비스 컨테이너 구성, JaCoCo 커버리지 자동화(#66), CI 빌드 병목 개선(#68), 이후 Codecov 연동 |
+| 개인 · 성능 (2025.04 ~ 05) | 경매 추천 API: 정렬 기준 enum과 Caffeine → Redis 2단 캐시(#29), 지연 로딩 예외 수정(#31), fetch join 제거와 DTO 조회(#36), 대표 이미지 저장과 서브쿼리 개선(#39), JVM GC 로그 수집(#35) |
+| 개인 · 이벤트 (2025.05 ~ 06) | 입찰 알림을 Kafka로 분리(#49)와 임베디드 Kafka E2E 테스트(#51), 재시도 + DLT와 event 모듈 분리(#57), Redis 기반 중복 처리(#58), DLT의 DB 기록·Slack 알림과 Redis 장애 시 DB fallback(#78), 중복 처리 개선(#82) |
+| 개인 · Kafka 서버 (2025.04 ~ 2026.02) | Kafka를 앱과 분리된 EC2·저장소([handsup-kafka](https://github.com/ParkJuhan94/handsup-kafka))로 분리하고 힙 메모리를 제한(2025.05), 이후 KRaft 모드 전환·환경 분리·kafka-ui(SSH 터널 전용)(2026.02) |
+| 개인 · 기능 (2025.06 ~ 08) | OpenAI 기반 경매 설명 자동 생성(#87), `@Value` 기반 설정 주입 정리(#83), 검색 코드 구조 정리와 Elasticsearch 연동 시도(#84) |
+| 개인 · 운영 안정화 (2026.06 ~ 08, Claude Code) | 설정 통합과 보안 강화, `.env` 자동 로드, CI/CD 개선과 compose 로컬·운영 분리, 첫 운영 배포 설정(ddl-auto), Codecov, GitHub Actions Node 24 대응, 컨테이너 재시작 정책, Testcontainers 호환 수정, 분산 락이 트랜잭션보다 안쪽에서 실행돼 동시 입찰 정합성이 깨지던 버그 수정 |
+| 개인 · 보안·안정성 (2026.10, Claude Code) | 인증 토큰 회전·로그아웃 무효화·401 응답(#104), 역직렬화 실패 메시지가 컨슈머를 막던 문제(#110), 같은 경매에 여러 번 입찰한 사용자의 리뷰 500(#113) |
+| 개인 · 개발 환경 (2026.10, Claude Code) | CORS 설정화(#105, #107), 로컬 서버 포트 8082(#108), 로컬 Kafka를 Redpanda로 교체하고 컨테이너 메모리 한도 추가(#109), CD를 수동 실행으로 변경(#106), 시드 데이터 스크립트(#112) |
 
 <br>
 
@@ -124,11 +133,45 @@ docker compose --env-file .env up -d mysql redis redpanda
 
 ## 팀원 소개
 
-| 구분 | 이름 | GitHub |
-|------|------|--------|
-| 백엔드 (팀장) | 손가현 | [@hyun2371](https://github.com/hyun2371) |
-| 백엔드 | 박주한 | [@ParkJuhan94](https://github.com/ParkJuhan94) |
-| 프론트엔드 (팀장) | 허지호 | [@hj9118](https://github.com/hj9118) |
-| 프론트엔드 | 신준혁 | [@oridori2705](https://github.com/oridori2705) |
-| 프론트엔드 | 현세인 | [@imssein](https://github.com/imssein) |
-| 프론트엔드 | 주장권 | [@JuJangGwon](https://github.com/JuJangGwon) |
+<table>
+  <tr>
+    <th>손가현<br><sub>백엔드 · 팀장</sub></th>
+    <th>박주한<br><sub>백엔드</sub></th>
+    <th>허지호<br><sub>프론트엔드 · 팀장</sub></th>
+    <th>신준혁<br><sub>프론트엔드</sub></th>
+    <th>현세인<br><sub>프론트엔드</sub></th>
+    <th>주장권<br><sub>프론트엔드</sub></th>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/hyun2371">
+        <img width="100px" src="https://github.com/hyun2371.png" alt="손가현" />
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/ParkJuhan94">
+        <img width="100px" src="https://github.com/ParkJuhan94.png" alt="박주한" />
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/hj9118">
+        <img width="100px" src="https://github.com/hj9118.png" alt="허지호" />
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/oridori2705">
+        <img width="100px" src="https://github.com/oridori2705.png" alt="신준혁" />
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/imssein">
+        <img width="100px" src="https://github.com/imssein.png" alt="현세인" />
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/JuJangGwon">
+        <img width="100px" src="https://github.com/JuJangGwon.png" alt="주장권" />
+      </a>
+    </td>
+  </tr>
+</table>
