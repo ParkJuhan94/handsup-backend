@@ -10,9 +10,13 @@
 - 팀 프로젝트 원본 : [Programmers-HandsUp/BE-handsup](https://github.com/Programmers-HandsUp/BE-handsup)
 - 작성 기준 : 2026-10-22, `main` 브랜치 커밋 `00c7d44` 시점의 코드와 구성 (이후 변경은 반영되지 않을 수 있습니다)
 
-<div align="left">
-  <img width="600" alt="서비스 소개" src="https://github.com/Programmers-HandsUp/BE-handsup/assets/77109954/8e3b8727-a732-4b9c-a575-c2bdca9f576b">
-</div>
+## 화면
+
+| 홈 | 경매 상세 (상단) | 경매 상세 (입찰 현황) | 경매 상세 (댓글) |
+|:---:|:---:|:---:|:---:|
+| <img src="assets/readme/home.jpg" width="220" alt="홈 화면"> | <img src="assets/readme/auction-top.jpg" width="220" alt="경매 상세 상단"> | <img src="assets/readme/auction-bids.jpg" width="220" alt="경매 상세 입찰 현황"> | <img src="assets/readme/auction-comments.jpg" width="220" alt="경매 상세 댓글"> |
+
+> 로컬에서 서버(8082)와 팀 프론트(3004)를 띄우고 테스트 데이터로 캡처한 화면입니다.
 
 <br>
 
