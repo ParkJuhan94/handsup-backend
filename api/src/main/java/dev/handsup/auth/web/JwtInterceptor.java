@@ -14,6 +14,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import dev.handsup.auth.annotation.NoAuth;
 import dev.handsup.auth.service.JwtProvider;
 import dev.handsup.common.exception.NotFoundException;
+import dev.handsup.common.exception.ValidationException;
 
 @Component
 @RequiredArgsConstructor
@@ -44,8 +45,8 @@ public class JwtInterceptor implements HandlerInterceptor {
             String accessToken = toAccessToken(request);
             jwtProvider.validateToken(accessToken);
             return true;
-        } catch (NotFoundException e) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401 상태 코드 설정
+        } catch (NotFoundException | ValidationException e) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 토큰 없음·만료·변조는 401
             return false;
         } catch (Exception e) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR); // 500 상태 코드 설정

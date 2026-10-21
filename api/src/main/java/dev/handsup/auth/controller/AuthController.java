@@ -27,6 +27,7 @@ import dev.handsup.auth.dto.response.LoginDetailResponse;
 import dev.handsup.auth.dto.response.LoginSimpleResponse;
 import dev.handsup.auth.dto.response.TokenReIssueResponse;
 import dev.handsup.auth.service.AuthService;
+import dev.handsup.auth.service.JwtProvider;
 import dev.handsup.notification.service.FCMService;
 import dev.handsup.user.domain.User;
 
@@ -38,6 +39,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final FCMService fcmService;
+    private final JwtProvider jwtProvider;
 
     @NoAuth
     @PostMapping("/login")
@@ -50,7 +52,7 @@ public class AuthController {
         LoginDetailResponse loginDetailResponse = authService.login(request);
         LoginSimpleResponse loginSimpleResponse = LoginSimpleResponse.from(loginDetailResponse.accessToken());
 
-        ResponseCookie cookie = AuthMapper.toCookie(loginDetailResponse);
+        ResponseCookie cookie = AuthMapper.toCookie(loginDetailResponse, jwtProvider.getRefreshTokenValidity());
         httpServletResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
         return ResponseEntity.ok(loginSimpleResponse);
@@ -60,21 +62,29 @@ public class AuthController {
     @Operation(summary = "로그아웃 API", description = "로그아웃을 한다")
     @ApiResponse(useReturnTypeSchema = true)
     public ResponseEntity<HttpStatus> logout(
-        @Parameter(hidden = true) @JwtAuthorization User user
+        @Parameter(hidden = true) @JwtAuthorization User user,
+        HttpServletResponse httpServletResponse
     ) {
+        authService.logout(user);
         fcmService.deleteFcmToken(user.getEmail());
+        httpServletResponse.addHeader(HttpHeaders.SET_COOKIE, AuthMapper.toExpiredCookie().toString());
         return ResponseEntity.ok(HttpStatus.OK);
     }
 
     @NoAuth
     @PostMapping("/token")
-    @Operation(summary = "토큰 재발급 API", description = "리프레쉬 토큰으로 요청하여 액세스 토큰을 재발급 받는다")
+    @Operation(summary = "토큰 재발급 API", description = "리프레쉬 토큰으로 요청하여 액세스 토큰을 재발급 받고, 리프레쉬 토큰도 새로 발급(회전)된다")
     @ApiResponse(useReturnTypeSchema = true)
     public ResponseEntity<TokenReIssueResponse> reIssueAccessToken(
-        HttpServletRequest request
+        HttpServletRequest request,
+        HttpServletResponse httpServletResponse
     ) {
         String refreshTokenFromCookies = AuthMapper.extractRefreshTokenFromCookies(request);
-        TokenReIssueResponse response = authService.createAccessTokenByRefreshToken(refreshTokenFromCookies);
-        return ResponseEntity.ok(response);
+        LoginDetailResponse tokens = authService.reIssueTokens(refreshTokenFromCookies);
+
+        ResponseCookie cookie = AuthMapper.toCookie(tokens, jwtProvider.getRefreshTokenValidity());
+        httpServletResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+        return ResponseEntity.ok(TokenReIssueResponse.from(tokens.accessToken()));
     }
 }
