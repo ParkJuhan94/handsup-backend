@@ -1,4 +1,4 @@
-# HandsUp
+# HandsUp (Backend)
 
 [![CI Backend](https://github.com/ParkJuhan94/handsup-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/ParkJuhan94/handsup-backend/actions/workflows/ci.yml)
 
