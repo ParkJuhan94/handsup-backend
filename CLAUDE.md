@@ -68,7 +68,6 @@ Fixtures in `core/src/testFixtures/java/dev/handsup/fixture/`:
 
 - MySQL (primary DB), Redis (cache/locking), Kafka (events)
 - AWS S3 (images), Firebase FCM (push notifications), OpenAI API
-- Elasticsearch (search - in development on feat/es-auction-search branch)
 
 ## 작업 기록
 
