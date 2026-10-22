@@ -131,8 +131,6 @@ public class BiddingEventDispatcher {
             truncatedPayload.length() > 500 ? truncatedPayload.substring(0, 500) + "..." : truncatedPayload);
         slackNotificationService.send(slackMessage);
 
-        // 3. ElasticSearch 로그 저장
-
         return deadLetterLog;
     }
 

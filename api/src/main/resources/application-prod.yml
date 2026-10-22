@@ -16,8 +16,6 @@ logging:
     org.springframework: warn
     org.hibernate: warn
     org.hibernate.SQL: warn
-    co.elastic.clients: warn
-    org.springframework.data.elasticsearch: warn
 
 # 운영은 로컬 개발용 출처를 열지 않는다. 배포 프론트 도메인이 정해지면 여기에 추가한다.
 cors:

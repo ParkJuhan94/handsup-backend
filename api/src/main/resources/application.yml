@@ -43,10 +43,6 @@ spring:
 server:
   port: 8082
 
-elasticsearch:
-  host: ${ELASTICSEARCH_HOST:localhost}
-  port: ${ELASTICSEARCH_PORT:9200}
-
 logging:
   level:
     root: info
@@ -54,8 +50,6 @@ logging:
     org.hibernate: info
     org.hibernate.SQL: debug
     org.hibernate.tool.hbm2ddl: debug
-    co.elastic.clients: debug
-    org.springframework.data.elasticsearch: debug
 
 event:
   kafka:
