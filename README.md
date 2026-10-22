@@ -1,4 +1,4 @@
-# HandsUp - 중고 경매 거래 플랫폼 (Backend)
+# HandsUp
 
 [![CI Backend](https://github.com/ParkJuhan94/handsup-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/ParkJuhan94/handsup-backend/actions/workflows/ci.yml)
 
@@ -8,7 +8,7 @@
 
 - **프론트엔드** : [ParkJuhan94/handsup-frontend](https://github.com/ParkJuhan94/handsup-frontend) (팀 프론트 [Programmers-HandsUp/FE-HandsUp](https://github.com/Programmers-HandsUp/FE-HandsUp)을 포크)
 - **팀 프로젝트 원본** : [Programmers-HandsUp/BE-handsup](https://github.com/Programmers-HandsUp/BE-handsup)
-- **작성 기준** : 2026-10-22, `main` 브랜치 커밋 `cebde3a` 시점의 코드와 구성 (이후 변경은 반영되지 않을 수 있습니다)
+- **작성일** : 2026-10-22 (이후 변경은 반영되지 않을 수 있습니다)
 
 ## 핵심 기술 포인트
 
