@@ -102,3 +102,16 @@ Fixtures in `core/src/testFixtures/java/dev/handsup/fixture/`:
 - CLUSTER_ID 백업: `docker exec hands-up-kafka cat /var/lib/kafka/data/meta.properties`의 `cluster.id`를 안전한 곳에 보관하고 `ENV_DEV_CONTENT` 시크릿 값과 일치 확인(불일치 시 재배포 실패, 새 발급은 볼륨 초기화 필요).
 - dev ↔ main 브랜치 동기화 필요(main에 직접 커밋한 CI/CD 작업들이 dev에 미반영).
 - `gc-logs/` 미추적 디렉터리 존재 - gitignore 여부 검토 필요.
+
+### 2026-10-23 - Kafka 단일 EC2 통합(Redpanda 교체)
+**변경 사항**
+- 별도 EC2(handsup-kafka 저장소)에서 운영하던 Kafka를 앱 EC2의 `docker-compose.prod.yml`로 통합하고 브로커를 Apache Kafka에서 Redpanda(v24.2.18)로 교체. 외부 리스너·호스트 포트(29092 PLAINTEXT)를 없애고 앱은 `hands-up-redpanda:9092`로 접속(compose에 직접 지정 - `.env`의 `KAFKA_BOOTSTRAP_SERVERS`는 더 이상 쓰지 않음).
+- 확인 UI는 kafka-ui(8080) 대신 Redpanda Console을 `--profile redpanda-console`로 온디맨드 기동(`127.0.0.1:8091`, SSH 터널 전용). 앱이 호스트 8080을 쓰므로 8091로 옮김.
+
+**결정 사항**
+- 분리의 이점(장애 격리)보다 비용·운영 부담(EC2 2대, advertised host 낡음, SG 규칙, PLAINTEXT 외부 노출)이 커서 통합. 메모리 부담은 Redpanda(네이티브)로 상쇄 - 로컬 검증에서 유휴 약 73MiB, 한도 900m.
+- CD가 하이픈 버전 `docker-compose`(v1)라 `deploy.resources` 대신 `mem_limit`을 사용(v1은 deploy 한도를 무시).
+
+**다음 작업**
+- 머지 후 운영 전환 절차(EC2 A 메모리 확인 → 배포 → 입찰 이벤트 E2E 확인 → EC2 B 종료 → handsup-kafka 저장소 CD 중단/아카이브)는 PR 본문 체크리스트 참고. EC2 A 인스턴스 타입(메모리)은 미확인.
+
