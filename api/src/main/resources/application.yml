@@ -92,3 +92,8 @@ jwt:
   secret: ${JWT_SECRET}
   token-validity-in-seconds: 1800            # access 30분
   refresh-token-validity-in-days: 14
+
+# Swagger UI 웹자르를 올릴 때 springdoc이 옛 경로를 찾아 404가 나지 않도록 api/build.gradle의 org.webjars:swagger-ui와 맞춘다
+springdoc:
+  swagger-ui:
+    version: 5.32.14
