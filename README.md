@@ -40,7 +40,7 @@
 | 개인 · CI·품질 | CI에 MySQL·Redis·Kafka 서비스 컨테이너 구성, JaCoCo 커버리지 자동화, CI 빌드 병목 개선, 이후 Codecov 연동 |
 | 개인 · 성능 | 경매 추천 API: 정렬 기준 enum과 Caffeine → Redis 2단 캐시, 지연 로딩 예외 수정, fetch join 제거와 DTO 조회, 대표 이미지 저장과 서브쿼리 개선, JVM GC 로그 수집. 로컬 시드 22건 기준 추천 API 응답 p50은 DB 5.5ms, Redis 2.4ms, Caffeine 1.0ms |
 | 개인 · 이벤트 | 입찰 알림을 Kafka로 분리와 임베디드 Kafka E2E 테스트, 재시도 + DLT와 event 모듈 분리, Redis 기반 중복 처리, DLT의 DB 기록·Slack 알림과 Redis 장애 시 DB fallback, 중복 처리 개선 |
-| 개인 · Kafka 서버 | Kafka를 앱과 분리된 EC2·저장소([handsup-kafka](https://github.com/ParkJuhan94/handsup-kafka))로 분리하고 힙 메모리를 제한, 이후 KRaft 모드 전환·환경 분리·kafka-ui(SSH 터널 전용) |
+| 개인 · Kafka 서버 | Kafka를 앱과 분리된 EC2·저장소([handsup-kafka](https://github.com/ParkJuhan94/handsup-kafka))로 분리하고 힙 메모리를 제한, 이후 KRaft 모드 전환·환경 분리·kafka-ui(SSH 터널 전용), 트래픽 규모 대비 운영 부담(외부 리스너 노출·advertised host·EC2 2대)이 커 단일 EC2로 통합하고 브로커를 Redpanda로 교체 |
 | 개인 · 기능 | OpenAI 기반 경매 설명 자동 생성, `@Value` 기반 설정 주입 정리, 검색 코드 구조 정리와 Elasticsearch 연동 시도 |
 | 개인 · 운영 안정화 (Claude Code) | 설정 통합과 보안 강화, `.env` 자동 로드, CI/CD 개선과 compose 로컬·운영 분리, 첫 운영 배포 설정(ddl-auto), Codecov, GitHub Actions Node 24 대응, 컨테이너 재시작 정책, Testcontainers 호환 수정, 분산 락이 트랜잭션보다 안쪽에서 실행돼 동시 입찰 정합성이 깨지던 버그 수정 |
 | 개인 · 보안·안정성 (Claude Code) | 인증 토큰 회전·로그아웃 무효화·401 응답, 역직렬화 실패 메시지가 컨슈머를 막던 문제, 같은 경매에 여러 번 입찰한 사용자의 리뷰 500 |
@@ -79,7 +79,7 @@ event   → Kafka 이벤트 처리 (Producer / Consumer, 재시도 · DLT)
 | 분류 | 기술 |
 |------|------|
 | Backend | Java 17, Spring Boot 3.2, JPA, QueryDSL |
-| Messaging | Kafka (운영: Apache Kafka 별도 EC2 / 로컬: Redpanda) |
+| Messaging | Kafka 프로토콜 호환 브로커 Redpanda (운영: 앱과 같은 EC2의 compose / 로컬: 동일) |
 | DB / Cache | MySQL, Redis (Redisson), Caffeine |
 | Infra / CI·CD | Docker, AWS EC2 · S3, GitHub Actions |
 | Test | JUnit 5, Mockito, Testcontainers, Embedded Kafka, JaCoCo + Codecov |
