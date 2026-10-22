@@ -8,7 +8,15 @@
 
 - 프론트엔드 : [ParkJuhan94/handsup-frontend](https://github.com/ParkJuhan94/handsup-frontend) (팀 프론트 [Programmers-HandsUp/FE-HandsUp](https://github.com/Programmers-HandsUp/FE-HandsUp)을 포크)
 - 팀 프로젝트 원본 : [Programmers-HandsUp/BE-handsup](https://github.com/Programmers-HandsUp/BE-handsup)
-- 작성 기준 : 2026-10-22, `main` 브랜치 커밋 `00c7d44` 시점의 코드와 구성 (이후 변경은 반영되지 않을 수 있습니다)
+- 작성 기준 : 2026-10-22, `main` 브랜치 커밋 `cebde3a` 시점의 코드와 구성 (이후 변경은 반영되지 않을 수 있습니다)
+
+## 핵심 포인트
+
+- 인증 : 액세스 토큰 30분, 리프레시 토큰 14일로 두고 재발급할 때마다 리프레시 토큰을 회전시킵니다. 로그아웃한 토큰과 이미 쓴 토큰은 블랙리스트로 막습니다.
+- 동시성 : 분산 락보다 트랜잭션이 먼저 시작돼 동시 입찰 정합성이 깨지던 버그를, 락이 항상 트랜잭션 바깥에서 실행되도록 순서를 고정해 수정했습니다(100건 동시 입찰 테스트로 검증).
+- 이벤트 : 입찰 알림을 Kafka로 분리하고 재시도 + DLT를 두었습니다. 잘못된 메시지가 컨슈머를 막던 문제는 `ErrorHandlingDeserializer`와 재현 테스트로 막았습니다.
+
+<br>
 
 ## 화면
 
@@ -29,7 +37,7 @@
 | 팀 단계 | JWT 액세스·리프레시 인증과 인터셉터, 경매·입찰·리뷰·알림 API, DB 조회 최적화와 캐시 도입, 성능 테스트. 배포 파이프라인·분산 락·인기 검색어는 팀원이 구현 |
 | 개인 · 인프라 | Docker 이미지 빌드 단계와 Compose 구성, MySQL 헬스체크와 wait-for-it으로 기동 순서 보장, CD 재작업(scp·ssh 액션, SSH 키 접속), Swagger 서버를 로컬 한정, 프론트 연동 CORS |
 | 개인 · CI·품질 | CI에 MySQL·Redis·Kafka 서비스 컨테이너 구성, JaCoCo 커버리지 자동화, CI 빌드 병목 개선, 이후 Codecov 연동 |
-| 개인 · 성능 | 경매 추천 API: 정렬 기준 enum과 Caffeine → Redis 2단 캐시, 지연 로딩 예외 수정, fetch join 제거와 DTO 조회, 대표 이미지 저장과 서브쿼리 개선, JVM GC 로그 수집 |
+| 개인 · 성능 | 경매 추천 API: 정렬 기준 enum과 Caffeine → Redis 2단 캐시, 지연 로딩 예외 수정, fetch join 제거와 DTO 조회, 대표 이미지 저장과 서브쿼리 개선, JVM GC 로그 수집. 로컬 시드 22건 기준 추천 API 응답 p50은 DB 5.5ms, Redis 2.4ms, Caffeine 1.0ms |
 | 개인 · 이벤트 | 입찰 알림을 Kafka로 분리와 임베디드 Kafka E2E 테스트, 재시도 + DLT와 event 모듈 분리, Redis 기반 중복 처리, DLT의 DB 기록·Slack 알림과 Redis 장애 시 DB fallback, 중복 처리 개선 |
 | 개인 · Kafka 서버 | Kafka를 앱과 분리된 EC2·저장소([handsup-kafka](https://github.com/ParkJuhan94/handsup-kafka))로 분리하고 힙 메모리를 제한, 이후 KRaft 모드 전환·환경 분리·kafka-ui(SSH 터널 전용) |
 | 개인 · 기능 | OpenAI 기반 경매 설명 자동 생성, `@Value` 기반 설정 주입 정리, 검색 코드 구조 정리와 Elasticsearch 연동 시도 |
