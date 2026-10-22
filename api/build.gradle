@@ -13,7 +13,8 @@ dependencies {
 
     // --- Swagger (OpenAPI) ---
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.1.0'
-    implementation 'com.github.ParkJuhan94:swagger-dark-spring-boot-starter:v0.1.0'
+    // springdoc 2.1.0이 번들한 Swagger UI 대신 5.32.14를 쓴다(공식 다크모드 5.31.0+, XSS 패치 5.32.14). 버전은 application.yml의 springdoc.swagger-ui.version과 같이 올릴 것
+    implementation 'org.webjars:swagger-ui:5.32.14'
 
     // --- FCM (Firebase) ---
     implementation 'com.google.firebase:firebase-admin:9.2.0'
