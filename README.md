@@ -6,15 +6,15 @@
 팀 단계와 개인 고도화 전반(2025)은 직접 설계·구현했고 AI는 검색·질문 보조로만 썼습니다. 2026년 6월부터 Claude Code를 사용했으며, 이 단계에서는 설계와 검증은 제가 하고
 구현은 AI와 함께했습니다. 프론트엔드는 팀원들이 만든 것을 포크해 이 백엔드와 연동했습니다.
 
-- 프론트엔드 : [ParkJuhan94/handsup-frontend](https://github.com/ParkJuhan94/handsup-frontend) (팀 프론트 [Programmers-HandsUp/FE-HandsUp](https://github.com/Programmers-HandsUp/FE-HandsUp)을 포크)
-- 팀 프로젝트 원본 : [Programmers-HandsUp/BE-handsup](https://github.com/Programmers-HandsUp/BE-handsup)
-- 작성 기준 : 2026-10-22, `main` 브랜치 커밋 `cebde3a` 시점의 코드와 구성 (이후 변경은 반영되지 않을 수 있습니다)
+- **프론트엔드** : [ParkJuhan94/handsup-frontend](https://github.com/ParkJuhan94/handsup-frontend) (팀 프론트 [Programmers-HandsUp/FE-HandsUp](https://github.com/Programmers-HandsUp/FE-HandsUp)을 포크)
+- **팀 프로젝트 원본** : [Programmers-HandsUp/BE-handsup](https://github.com/Programmers-HandsUp/BE-handsup)
+- **작성 기준** : 2026-10-22, `main` 브랜치 커밋 `cebde3a` 시점의 코드와 구성 (이후 변경은 반영되지 않을 수 있습니다)
 
 ## 핵심 기술 포인트
 
-- 인증 : 액세스 토큰 30분, 리프레시 토큰 14일로 두고 재발급할 때마다 리프레시 토큰을 회전시킵니다. 로그아웃한 토큰과 이미 쓴 토큰은 블랙리스트로 막습니다.
-- 동시성 : 분산 락보다 트랜잭션이 먼저 시작돼 동시 입찰 정합성이 깨지던 버그를, 락이 항상 트랜잭션 바깥에서 실행되도록 순서를 고정해 수정했습니다(100건 동시 입찰 테스트로 검증).
-- 이벤트 : 입찰 알림을 Kafka로 분리하고 재시도 + DLT를 두었습니다. 잘못된 메시지가 컨슈머를 막던 문제는 `ErrorHandlingDeserializer`와 재현 테스트로 막았습니다.
+- **인증** : 액세스 토큰 30분, 리프레시 토큰 14일로 두고 재발급할 때마다 리프레시 토큰을 회전시킵니다. 로그아웃한 토큰과 이미 쓴 토큰은 블랙리스트로 막습니다.
+- **동시성** : 분산 락보다 트랜잭션이 먼저 시작돼 동시 입찰 정합성이 깨지던 버그를, 락이 항상 트랜잭션 바깥에서 실행되도록 순서를 고정해 수정했습니다(100건 동시 입찰 테스트로 검증).
+- **이벤트** : 입찰 알림을 Kafka로 분리하고 재시도 + DLT를 두었습니다. 잘못된 메시지가 컨슈머를 막던 문제는 `ErrorHandlingDeserializer`와 재현 테스트로 막았습니다.
 
 <br>
 
@@ -24,6 +24,7 @@
 |:---:|:---:|:---:|:---:|
 | <img src="assets/readme/home.jpg" width="220" alt="홈 화면"> | <img src="assets/readme/auction-top.jpg" width="220" alt="경매 상세 상단"> | <img src="assets/readme/auction-bids.jpg" width="220" alt="경매 상세 입찰 현황"> | <img src="assets/readme/auction-comments.jpg" width="220" alt="경매 상세 댓글"> |
 
+> [!NOTE]
 > 테스트 데이터 기준 화면입니다.
 
 <br>
@@ -97,7 +98,7 @@ docker compose --env-file .env up -d mysql redis redpanda
 ./gradlew :api:bootRun
 ```
 
-- Swagger : http://localhost:8082/swagger-ui/index.html
+- **Swagger** : http://localhost:8082/swagger-ui/index.html
 - 프론트와 연결하려면 [handsup-frontend](https://github.com/ParkJuhan94/handsup-frontend)를 `npm run dev`로 띄웁니다(3004).
 
 <br>
@@ -116,6 +117,7 @@ docker compose --env-file .env up -d mysql redis redpanda
 
 <img width="600" alt="CI/CD 파이프라인" src="https://github.com/Programmers-HandsUp/BE-handsup/assets/77109954/79ef0f21-d86b-45ae-a955-03d60b5ccfcb">
 
+> [!NOTE]
 > 현재 CD는 배포 서버를 꺼 둔 상태라 push로 자동 실행하지 않고, Actions 탭에서 수동 실행합니다.
 
 </details>
