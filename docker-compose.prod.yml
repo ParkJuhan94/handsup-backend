@@ -27,6 +27,57 @@ services:
       retries: 3
       start_period: 20s
 
+  # Kafka를 별도 EC2(handsup-kafka 저장소)에서 운영하던 구조를 단일 EC2로 통합하면서, 같은 호스트에 얹는
+  # 메모리 부담을 줄이려고 Apache Kafka(JVM)를 Kafka 와이어 프로토콜 호환 브로커인 Redpanda(네이티브)로 교체했다.
+  # 코드는 Spring Kafka 클라이언트만 쓰므로 그대로 붙는다(로컬 docker-compose.yml과 같은 브로커).
+  # 앱과 같은 compose 네트워크 안에서만 접근하므로 외부 리스너와 호스트 포트를 열지 않는다(기존 29092 PLAINTEXT 노출 제거).
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.2.18
+    container_name: hands-up-redpanda
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --memory=512M
+      - --reserve-memory=0M
+      - --overprovisioned
+      - --node-id=0
+      - --check=false
+      - --set redpanda.auto_create_topics_enabled=true
+      - --kafka-addr internal://0.0.0.0:9092
+      - --advertise-kafka-addr internal://hands-up-redpanda:9092
+      - --rpc-addr hands-up-redpanda:33145
+      - --advertise-rpc-addr hands-up-redpanda:33145
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    restart: unless-stopped
+    # CD가 하이픈 버전(docker-compose)을 쓰므로 deploy.resources 대신 mem_limit을 쓴다(v1은 deploy 한도를 무시한다).
+    # redpanda 자체 --memory(512M)보다 여유를 둔다 - 컨테이너 한도는 non-heap/OS 오버헤드까지 포함해야 한다.
+    mem_limit: 900m
+    healthcheck:
+      test: [ "CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # 토픽/컨슈머 확인용 UI. 기본 up에는 포함하지 않고 필요할 때만 켠다:
+  #   docker-compose -f docker-compose.prod.yml --profile redpanda-console up -d redpanda-console
+  # 호스트 로컬(127.0.0.1)에만 바인딩하므로 SSH 터널(-L 8091:localhost:8091)로만 접근한다.
+  # 앱이 호스트 8080을 쓰므로 기존 kafka-ui(8080)와 달리 8091을 쓴다.
+  redpanda-console:
+    image: docker.redpanda.com/redpandadata/console:v2.7.2
+    container_name: hands-up-redpanda-console
+    profiles: [ "redpanda-console" ]
+    environment:
+      KAFKA_BROKERS: hands-up-redpanda:9092
+    ports:
+      - "127.0.0.1:8091:8080"
+    depends_on:
+      - redpanda
+    restart: unless-stopped
+    mem_limit: 256m
+
   app:
     image: ${DOCKERHUB_USERNAME}/${DOCKERHUB_APP_NAME}:latest
     volumes:
@@ -43,7 +94,8 @@ services:
       SPRING_DATA_REDIS_HOST: hands-up-redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_HOST_PASSWORD}
-      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
+      # 같은 compose 네트워크의 Redpanda를 가리킨다(.env의 KAFKA_BOOTSTRAP_SERVERS는 더 이상 쓰지 않음)
+      KAFKA_BOOTSTRAP_SERVERS: hands-up-redpanda:9092
       CLOUD_AWS_CREDENTIALS_ACCESS_KEY: ${CLOUD_AWS_CREDENTIALS_ACCESS_KEY}
       CLOUD_AWS_CREDENTIALS_SECRET_KEY: ${CLOUD_AWS_CREDENTIALS_SECRET_KEY}
       CLOUD_AWS_REGION_STATIC: ${CLOUD_AWS_REGION_STATIC}
@@ -55,7 +107,9 @@ services:
     depends_on:
       - redis
       - mysql
+      - redpanda
 
 volumes:
   redis_data:
   mysql_data:
+  redpanda_data:
