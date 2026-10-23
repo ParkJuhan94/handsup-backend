@@ -1,0 +1,24 @@
+{
+  "label": "cache-redis-r4",
+  "config": {
+    "rate": 100,
+    "duration": "60s",
+    "warmup": "30s",
+    "keys": 312,
+    "base": "http://localhost:8083",
+    "gitHead": "8c8f34b",
+    "cacheMode": "redis"
+  },
+  "latencyMs": {
+    "avg": 2.4104169305115892,
+    "p50": 2.164,
+    "p90": 2.982,
+    "p95": 3.402,
+    "p99": 6.315,
+    "max": 67.561
+  },
+  "requests": null,
+  "rps": null,
+  "failedRate": 0,
+  "droppedIterations": 0
+}

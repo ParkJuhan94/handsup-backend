@@ -1,0 +1,24 @@
+{
+  "label": "cache-both-r1",
+  "config": {
+    "rate": 100,
+    "duration": "60s",
+    "warmup": "30s",
+    "keys": 312,
+    "base": "http://localhost:8083",
+    "gitHead": "8c8f34b",
+    "cacheMode": "both"
+  },
+  "latencyMs": {
+    "avg": 1.4759303333333347,
+    "p50": 1.43,
+    "p90": 2.2001000000000004,
+    "p95": 2.565149999999999,
+    "p99": 4.332239999999993,
+    "max": 32.267
+  },
+  "requests": null,
+  "rps": null,
+  "failedRate": 0,
+  "droppedIterations": 211
+}

@@ -1,0 +1,24 @@
+{
+  "label": "cache-none-r2",
+  "config": {
+    "rate": 100,
+    "duration": "60s",
+    "warmup": "15s",
+    "keys": 312,
+    "base": "http://localhost:8083",
+    "gitHead": "8c8f34b",
+    "cacheMode": "none"
+  },
+  "latencyMs": {
+    "avg": 100.5409769920488,
+    "p50": 9.985,
+    "p90": 83.348,
+    "p95": 447.5274999999998,
+    "p99": 2338.0871,
+    "max": 4632.967
+  },
+  "requests": null,
+  "rps": null,
+  "failedRate": 0,
+  "droppedIterations": 93
+}

@@ -1,0 +1,24 @@
+{
+  "label": "query-after-r5",
+  "config": {
+    "rate": 10,
+    "duration": "60s",
+    "warmup": "30s",
+    "keys": 312,
+    "base": "http://localhost:8083",
+    "gitHead": "8c8f34b",
+    "cacheMode": "none"
+  },
+  "latencyMs": {
+    "avg": 20.477242928452554,
+    "p50": 19.243,
+    "p90": 27.002,
+    "p95": 30.29,
+    "p99": 57.152,
+    "max": 265.981
+  },
+  "requests": null,
+  "rps": null,
+  "failedRate": 0,
+  "droppedIterations": 0
+}
