@@ -1,0 +1,24 @@
+{
+  "label": "query-before-r2",
+  "config": {
+    "rate": 10,
+    "duration": "60s",
+    "warmup": "30s",
+    "keys": 312,
+    "base": "http://localhost:8083",
+    "gitHead": "8c8f34b",
+    "cacheMode": "before-fetchjoin"
+  },
+  "latencyMs": {
+    "avg": 67.82902828618958,
+    "p50": 26.889,
+    "p90": 229.571,
+    "p95": 269.93,
+    "p99": 419.832,
+    "max": 545.883
+  },
+  "requests": null,
+  "rps": null,
+  "failedRate": 0,
+  "droppedIterations": 0
+}
