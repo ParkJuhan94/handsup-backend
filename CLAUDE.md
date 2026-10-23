@@ -115,3 +115,20 @@ Fixtures in `core/src/testFixtures/java/dev/handsup/fixture/`:
 **다음 작업**
 - 머지 후 운영 전환 절차(EC2 A 메모리 확인 → 배포 → 입찰 이벤트 E2E 확인 → EC2 B 종료 → handsup-kafka 저장소 CD 중단/아카이브)는 PR 본문 체크리스트 참고. EC2 A 인스턴스 타입(메모리)은 미확인.
 
+### 2026-10-23 - 추천 API 로컬 성능 측정(k6)
+**변경 사항**
+- `perf/`에 k6 스크립트(`recommend.js`), 실행 도우미(`run.sh`), 반복 측정(`matrix.sh`, `matrix_full.sh`), 대량 시드(`seed_bulk.sql`)를 추가. 격리 DB `handsup_perf`에 경매 5,000건을 넣고 JVM 힙 512m·포트 8083 고정으로 측정.
+- `AuctionCacheService`에 `perf.cache-mode`(none|redis|both) 토글 추가. 기본값 `both`라 운영 동작 그대로.
+
+**측정 결과 (로컬 맥, 5회 중앙값, 결과 JSON은 `perf/results/`)**
+- 쿼리 개선(fetch join `98b5c53` → DTO 조회+대표 이미지 `is_main` HEAD, 10 RPS): p50 24.9→11.0ms, p95 267→24.7ms, p99 351→90ms. Before는 100 RPS에서 포화(p50 10초, 드롭 5,237건).
+- 캐시 3모드(100 RPS): p50 DB 7.4ms / Redis 2.1ms / Caffeine+Redis 1.1ms, p95 10.8 / 3.3 / 2.5ms.
+
+**결정 사항**
+- 부하 동일성은 고정 도착률(constant-arrival-rate)과 결정적 요청 순서로 보장. 쿼리 비교(10 RPS)와 캐시 비교(100 RPS)는 부하가 달라 표를 가로 비교하지 않는다.
+- After 기준은 `2ba27ad`가 아니라 HEAD. `2ba27ad`는 이미지가 여러 장이면 서브쿼리 오류(500)라 `0e70faa`(#39)의 `is_main` 이후와 비교.
+- 이전 커밋 빌드에는 gitignore된 `application.yml`·`firebase_account.json`이 없어 HEAD 것을 복사(쿼리 코드는 그대로, 토글만 추가).
+
+**주의**
+- 모드 전환 직후 첫 실행(r1)은 JIT 워밍업 영향으로 드롭이 생김(워밍업 30초로도 남음). 이력서용 수치는 r2~r5 기준.
+- 로컬 상대 비교용이며 운영 절대 수치가 아님.
