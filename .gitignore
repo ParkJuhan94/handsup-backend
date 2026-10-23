@@ -51,4 +51,4 @@ out/
 docs/PORTFOLIO_HIGHLIGHTS.md
 
 # JVM GC 로그 (런타임 산출물)
-gc-logs/
+gc-logs/perf/results/

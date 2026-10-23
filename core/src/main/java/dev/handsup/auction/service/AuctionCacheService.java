@@ -4,6 +4,7 @@ import java.time.Duration;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -29,6 +30,10 @@ public class AuctionCacheService {
     private final RedisTemplate<String, PageResponse<RecommendAuctionResponse>> redisTemplate;
     private final AuctionQueryRepository auctionQueryRepository;
 
+    // 성능 측정용 캐시 계층 전환(none: DB만, redis: Redis만, both: Caffeine+Redis). 운영 기본값은 both.
+    @Value("${perf.cache-mode:both}")
+    private String cacheMode = "both"; // 단위 테스트처럼 @Value 주입이 없을 때도 운영 기본 동작을 유지
+
     public PageResponse<RecommendAuctionResponse> getRecommendAuctions(
         String si, String gu, String dong, int page, int size, String sort
     ) {
@@ -38,16 +43,21 @@ public class AuctionCacheService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.by(sort)));
         String key = KeyGenerator.generateRecommendAuctionsKey(si, gu, dong, pageable);
 
+        boolean useCaffeine = "both".equals(cacheMode);
+        boolean useRedis = !"none".equals(cacheMode);
+
         // 1. Caffeine 조회
-        PageResponse<RecommendAuctionResponse> cached = caffeineCache.getIfPresent(key);
+        PageResponse<RecommendAuctionResponse> cached = useCaffeine ? caffeineCache.getIfPresent(key) : null;
         if (cached != null) {
             return cached;
         }
 
         // 2. Redis 조회
-        cached = redisTemplate.opsForValue().get(key);
+        cached = useRedis ? redisTemplate.opsForValue().get(key) : null;
         if (cached != null) {
-            caffeineCache.put(key, cached); // Caffeine에도 저장
+            if (useCaffeine) {
+                caffeineCache.put(key, cached); // Caffeine에도 저장
+            }
             return cached;
         }
 
@@ -58,8 +68,12 @@ public class AuctionCacheService {
         PageResponse<RecommendAuctionResponse> response = CommonMapper.toPageResponse(auctionSlice);
 
         // 4. 캐시에 저장
-        caffeineCache.put(key, response);
-        redisTemplate.opsForValue().set(key, response, Duration.ofMinutes(10));
+        if (useCaffeine) {
+            caffeineCache.put(key, response);
+        }
+        if (useRedis) {
+            redisTemplate.opsForValue().set(key, response, Duration.ofMinutes(10));
+        }
 
         return response;
     }
