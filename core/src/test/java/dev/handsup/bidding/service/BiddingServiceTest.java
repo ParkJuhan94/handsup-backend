@@ -3,6 +3,7 @@ package dev.handsup.bidding.service;
 import static dev.handsup.bidding.exception.BiddingErrorCode.BIDDING_PRICE_LESS_THAN_INIT_PRICE;
 import static dev.handsup.bidding.exception.BiddingErrorCode.BIDDING_PRICE_NOT_HIGH_ENOUGH;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -66,8 +67,7 @@ class BiddingServiceTest {
     @Test
     @DisplayName("[입찰가가 최소 입찰가보다 낮으면 예외를 발생시킨다]")
     void validateBiddingPrice_LessThanInitPrice_ThrowsException() {
-        // given
-        given(biddingRepository.findMaxBiddingPriceByAuctionId(any(Long.class))).willReturn(null);
+        // given: 입찰 내역이 없는 경매(biddingCount = 0)
 
         // when & then
         int initPrice = auction.getInitPrice();
@@ -81,10 +81,42 @@ class BiddingServiceTest {
     void validateBiddingPrice_NotHighEnough_ThrowsException() {
         // given
         int maxBiddingPrice = 15000;
-        given(biddingRepository.findMaxBiddingPriceByAuctionId(any(Long.class))).willReturn(maxBiddingPrice);
+        placeBid(auction, maxBiddingPrice);
 
         // when & then
         assertThatThrownBy(() -> biddingService.validateBiddingPrice(maxBiddingPrice + 999, auction))
+            .isInstanceOf(ValidationException.class)
+            .hasMessageContaining(BIDDING_PRICE_NOT_HIGH_ENOUGH.getMessage());
+    }
+
+    @Test
+    @DisplayName("[첫 입찰은 최소 입찰가와 같아도 통과한다]")
+    void validateBiddingPrice_FirstBidEqualToInitPrice_Passes() {
+        // when & then
+        assertThatCode(() -> biddingService.validateBiddingPrice(auction.getInitPrice(), auction))
+            .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("[입찰가가 최고 입찰가보다 정확히 1000원 높으면 통과한다]")
+    void validateBiddingPrice_ExactlyThousandHigher_Passes() {
+        // given
+        int maxBiddingPrice = 15000;
+        placeBid(auction, maxBiddingPrice);
+
+        // when & then
+        assertThatCode(() -> biddingService.validateBiddingPrice(maxBiddingPrice + 1000, auction))
+            .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("[입찰 내역이 있으면 최소 입찰가 이상이어도 최고 입찰가 + 1000원 미만이면 예외를 발생시킨다]")
+    void validateBiddingPrice_AboveInitPriceButBelowMax_ThrowsException() {
+        // given: 최소 입찰가(10000)보다는 높지만 최고 입찰가(30000)에는 못 미침
+        placeBid(auction, 30000);
+
+        // when & then
+        assertThatThrownBy(() -> biddingService.validateBiddingPrice(20000, auction))
             .isInstanceOf(ValidationException.class)
             .hasMessageContaining(BIDDING_PRICE_NOT_HIGH_ENOUGH.getMessage());
     }
@@ -104,7 +136,6 @@ class BiddingServiceTest {
         );
         ReflectionTestUtils.setField(bidding, "createdAt", LocalDateTime.now());
         given(biddingRepository.save(any(Bidding.class))).willReturn(bidding);
-        given(biddingRepository.findMaxBiddingPriceByAuctionId(any(Long.class))).willReturn(19000);
 
         // when
         BiddingResponse response = biddingService.registerBidding(request, auction.getId(), user);
@@ -189,5 +220,11 @@ class BiddingServiceTest {
         //then
         assertThat(response.tradingStatus()).isEqualTo(TradingStatus.CANCELED.getLabel());
         assertThat(bidding2.getTradingStatus()).isEqualTo(TradingStatus.PREPARING);
+    }
+
+    // 락 안에서 실제 입찰이 반영된 것과 같은 상태(현재가 갱신, 입찰 수 증가)를 만든다
+    private void placeBid(Auction auction, int price) {
+        auction.updateCurrentBiddingPrice(price);
+        auction.increaseBiddingCount();
     }
 }
