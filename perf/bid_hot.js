@@ -19,6 +19,7 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 const ok = new Counter('bid_200');
 const rejected = new Counter('bid_4xx');
+const lockTimeout = new Counter('bid_429');
 const serverError = new Counter('bid_5xx');
 
 export const options = {
@@ -52,7 +53,7 @@ export default function (data) {
     headers: { ...JSON_HEADERS, Authorization: `Bearer ${data.tokens[n % USERS]}` },
     tags: { target: hot ? 'hot' : 'other' },
   });
-  if (res.status === 200) ok.add(1); else if (res.status < 500) rejected.add(1); else serverError.add(1);
+  if (res.status === 200) ok.add(1); else if (res.status === 429) lockTimeout.add(1); else if (res.status < 500) rejected.add(1); else serverError.add(1);
 }
 
 export function handleSummary(data) {
@@ -60,13 +61,13 @@ export function handleSummary(data) {
   const d = data.metrics.http_req_duration.values;
   const out = {
     label: LABEL, config: { rate: RATE, duration: DURATION, hotShare: HOT_SHARE, hotId: HOT_ID, pool: POOL, priceBase: PRICE_BASE },
-    http200: c('bid_200'), http4xx: c('bid_4xx'), http5xx: c('bid_5xx'),
+    http200: c('bid_200'), http4xx: c('bid_4xx'), http429: c('bid_429'), http5xx: c('bid_5xx'),
     acceptedPerSec: c('bid_200') / parseInt(DURATION),
     latencyMs: { avg: d.avg, p50: d.med, p90: d['p(90)'], p95: d['p(95)'], p99: d['p(99)'], max: d.max },
     droppedIterations: data.metrics.dropped_iterations ? data.metrics.dropped_iterations.values.count : 0,
   };
   return {
     [`${RESULT_DIR}/${LABEL}.json`]: JSON.stringify(out, null, 2),
-    stdout: `\n[${LABEL}] 200=${out.http200} 4xx=${out.http4xx} 5xx=${out.http5xx} accepted/s=${out.acceptedPerSec.toFixed(1)} p50=${d.med.toFixed(1)}ms p95=${d['p(95)'].toFixed(1)}ms p99=${d['p(99)'].toFixed(1)}ms dropped=${out.droppedIterations}\n`,
+    stdout: `\n[${LABEL}] 200=${out.http200} 4xx=${out.http4xx} 429=${out.http429} 5xx=${out.http5xx} accepted/s=${out.acceptedPerSec.toFixed(1)} p50=${d.med.toFixed(1)}ms p95=${d['p(95)'].toFixed(1)}ms p99=${d['p(99)'].toFixed(1)}ms dropped=${out.droppedIterations}\n`,
   };
 }
