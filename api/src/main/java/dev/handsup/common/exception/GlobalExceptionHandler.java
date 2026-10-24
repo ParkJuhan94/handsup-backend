@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import lombok.extern.slf4j.Slf4j;
 
+import dev.handsup.common.redisson.LockAcquisitionException;
+
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -32,6 +34,14 @@ public class GlobalExceptionHandler {
 		}
 
 		return new ErrorResponseTemplate(message, ARGUMENT_NOT_VALID_ERROR_CODE);
+	}
+
+	// 락 대기 시간 초과는 동시 요청이 몰린 상황이라 클라이언트가 잠시 후 다시 시도하면 된다(ValidationException보다 먼저 매칭된다)
+	@ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
+	@ExceptionHandler(LockAcquisitionException.class)
+	public ErrorResponseTemplate handleLockAcquisitionException(LockAcquisitionException e) {
+		log.warn("LockAcquisitionException : {}", e.getMessage());
+		return new ErrorResponseTemplate(e.getMessage(), e.getCode());
 	}
 
 	@ResponseStatus(HttpStatus.BAD_REQUEST)
