@@ -16,7 +16,6 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
-import dev.handsup.common.exception.ValidationException;
 
 @Aspect
 @Component
@@ -49,7 +48,7 @@ public class DistributeLockAop {
             boolean hasLock = rLock.tryLock(waitTime, leaseTime, unit);
 
             if (!hasLock) {
-                throw new ValidationException(LockErrorCode.FAILED_TO_GET_LOCK);
+                throw new LockAcquisitionException();
             }
 
             log.info("get lock success {}", key);
