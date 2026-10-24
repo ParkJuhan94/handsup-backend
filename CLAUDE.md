@@ -132,3 +132,21 @@ Fixtures in `core/src/testFixtures/java/dev/handsup/fixture/`:
 **주의**
 - 모드 전환 직후 첫 실행(r1)은 JIT 워밍업 영향으로 드롭이 생김(워밍업 30초로도 남음). 이력서용 수치는 r2~r5 기준.
 - 로컬 상대 비교용이며 운영 절대 수치가 아님.
+
+### 2026-10-25 - 입찰 락 점유 시간 개선과 동시 입찰 정합성 테스트
+**변경 사항**
+- `bidding(auction_id, bidding_price)` 복합 인덱스 추가, 입찰 가격 검증을 `MAX` 쿼리 대신 경매의 현재가·입찰 수로 변경, 입찰의 락 대기 5초 → 1초, 락 대기 초과를 429로 응답(`LockAcquisitionException`, 코드 `rl_001` 유지).
+- `perf/`에 동시 입찰 정합성 테스트(`bid_concurrency.js`), 인기 경매 편중 부하(`bid_hot.js`), 입찰 50만 건 시드(`bid_seed.sql`), 전체 정합성 검증 SQL(`bid_verify_all.sql`) 추가. 측정 중 맥 슬립 방지로 k6를 `caffeinate -i`로 감쌈.
+
+**측정 결과 (로컬 맥, 입찰 50만 건, 100 RPS 5회 중앙값, 요청의 80%가 경매 1건)**
+- 수락 16.0 → 99.7건/초, p95 13,580 → 8ms, 드롭 약 940 → 0. 300 RPS도 수락 292.8건/초·드롭 0, 600 RPS에서 포화(429 1,332건). 정합성 불일치는 전 구간 0.
+- 원인: 락 안의 `MAX(bidding_price) WHERE auction_id=?`가 인덱스 없이 전체 스캔(약 49.8만 행, 43~54ms). 인덱스 후 약 0.1ms.
+
+**결정 사항**
+- 락 제거(조건부 UPDATE, B안)는 보류. 락을 유지한 채 300 RPS까지 소화돼 필요성이 확인되지 않음.
+- query-after-r4 급등은 GC·MySQL이 아니라 측정 중 맥 정지로 판단(15회 재측정 r11에서 재현, 독립 샘플러 기록도 같은 시각에 끊김).
+
+**주의 / 다음 작업**
+- ⚠️ 운영은 `ddl-auto: validate`라 인덱스가 자동 생성되지 않는다. 배포 전 운영 DB에서 `CREATE INDEX idx_bidding_auction_price ON bidding (auction_id, bidding_price)`를 먼저 실행해야 함(미실행).
+- 실행 중인 측정 스크립트(`perf/run.sh`)를 수정하면 bash가 어긋난 위치부터 읽어 다른 분기가 실행될 수 있다. 측정 중에는 고치지 않는다.
+- 입찰 시 경매 상태·종료일 검증이 `validateBiddingPrice`에 없다(다른 곳에서 막는지 미확인).
