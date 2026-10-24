@@ -150,3 +150,15 @@ Fixtures in `core/src/testFixtures/java/dev/handsup/fixture/`:
 - ⚠️ 운영은 `ddl-auto: validate`라 인덱스가 자동 생성되지 않는다. 배포 전 운영 DB에서 `CREATE INDEX idx_bidding_auction_price ON bidding (auction_id, bidding_price)`를 먼저 실행해야 함(미실행).
 - 실행 중인 측정 스크립트(`perf/run.sh`)를 수정하면 bash가 어긋난 위치부터 읽어 다른 분기가 실행될 수 있다. 측정 중에는 고치지 않는다.
 - 입찰 시 경매 상태·종료일 검증이 `validateBiddingPrice`에 없다(다른 곳에서 막는지 미확인).
+
+### 2026-10-25 - Kafka 운영 전환(Redpanda 통합) 실제 수행
+**수행 내용**
+- 별도 Kafka EC2(B)는 이미 없었고(콘솔 인스턴스 3개: quantlime-prod, k6-influxdb-grafana, handsup-app 모두 중지 상태), `handsup-app`(t3a.medium)만 켜서 전환했다. 서버는 옛 compose(외부 Kafka IP)로 자동 기동돼 있었다.
+- SSH(`~/.ssh/handsup-ec2-key-v2`, 사용자 `ubuntu`)로 `docker-compose.prod.yml`을 올리고 `up -d --pull never`로 전환. 앱 이미지는 서버에 있던 `parkjuhan/be-handsup:latest`를 그대로 썼다(Docker Hub 최신 이미지는 받지 않음). 전환 전 MySQL 덤프(`~/handsup_dump-20261025-pre-redpanda.sql`, 12MB)와 옛 compose 백업(`docker-compose.prod.yml.bak-20261025`)을 서버에 남겼다.
+- 확인: `rpk cluster health` Healthy, 앱이 `bidding-events` 등 토픽 7개 생성, 컨슈머 그룹 7개 Stable, `GET /api/auctions/recommend` 200(로컬·공인), 앱 로그에 Kafka 연결 오류 없음. 메모리 가용 약 2.0GB(Redpanda 129MB). 확인 후 인스턴스를 다시 중지.
+
+**주의 (미해결)**
+- ⚠️ 디스크: 루트 볼륨 6.8GB가 전환 직후 96%(여유 약 340MB)다. Redpanda가 파티션마다 약 33MB를 미리 할당해 `redpanda_data`가 약 270MB가 됐다(일회성 증가로 추정, 추가 증가 여부는 미확인). 전환 전에는 91%라 `amazon-cloudwatch-agent.deb`(설치 완료된 설치 파일), apt 캐시를 지워 약 330MB를 확보했다. MySQL 쓰기 여유가 얇으므로 EBS 확장(8GB → 16GB 등)을 권장한다(미수행).
+- 입찰 이벤트 E2E(입찰 → `bidding-events` 메시지 증가)는 운영 DB에 쓰는 일이라 수행하지 않았다. 컨슈머 연결과 토픽 생성까지만 확인.
+- 서버가 탄력적 IP 없이 켜질 때마다 공인 IP가 바뀐다(이번 3.36.127.23). `EC2_HOST` 시크릿(2026-09-03 값)은 맞지 않으니 CD를 쓰려면 갱신이 필요하다.
+- `handsup-kafka` 저장소의 CD 중단/아카이브는 하지 않았다(저장소 변경은 별도 확인 필요).
