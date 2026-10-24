@@ -12,8 +12,10 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -25,6 +27,7 @@ import dev.handsup.common.exception.ValidationException;
 import dev.handsup.user.domain.User;
 
 @Entity
+@Table(indexes = @Index(name = "idx_bidding_auction_price", columnList = "auction_id, bidding_price"))
 @Getter
 @NoArgsConstructor(access = PROTECTED)
 public class Bidding extends TimeBaseEntity {

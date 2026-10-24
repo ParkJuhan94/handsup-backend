@@ -42,7 +42,8 @@ public class BiddingService {
     // 트랜잭션은 DistributeLockAop -> AopForTransaction(REQUIRES_NEW)이 전담한다.
     // 여기에 @Transactional을 함께 붙이면 이중 트랜잭션(커넥션 2개)이 걸려
     // 부하 상황에서 락을 쥔 스레드가 커넥션 대기로 지연되고 leaseTime 만료로 이어진다.
-    @DistributeLock(key = "'auction_' + #auctionId") // auctionId 값을 추출하여 락 키로 사용
+    // 인기 경매에 입찰이 몰리면 락 대기열이 길어져 Tomcat 스레드가 오래 묶이므로, 대기를 1초로 줄여 빨리 실패시킨다
+    @DistributeLock(key = "'auction_' + #auctionId", waitTime = 1L) // auctionId 값을 추출하여 락 키로 사용
     public BiddingResponse registerBidding(RegisterBiddingRequest request, Long auctionId, User bidder) {
         Auction auction = auctionService.getAuctionById(auctionId);
         int biddingPrice = request.biddingPrice();
@@ -120,17 +121,17 @@ public class BiddingService {
         return BiddingMapper.toBiddingResponse(bidding);
     }
 
+    // 락 안에서 실행되므로 입찰 이력을 다시 집계하지 않고, 락 안에서 갱신되는 경매의 현재가·입찰 수로 검증한다.
+    // 현재가는 낮아지지 않으므로(취소된 입찰도 포함) 기존의 MAX(입찰가) 조회와 같은 결과다.
     public void validateBiddingPrice(int biddingPrice, Auction auction) {
-        Integer maxBiddingPrice = biddingRepository.findMaxBiddingPriceByAuctionId(auction.getId());
-
-        if (maxBiddingPrice == null) {
+        if (auction.getBiddingCount() == 0) {
             // 입찰 내역이 없는 경우, 최소 입찰가부터 입찰 가능
             if (biddingPrice < auction.getInitPrice()) {
                 throw new ValidationException(BiddingErrorCode.BIDDING_PRICE_LESS_THAN_INIT_PRICE);
             }
         } else {
             // 최고 입찰가보다 1000원 이상일 때만 입찰 가능
-            if (biddingPrice < (maxBiddingPrice + 1000)) {
+            if (biddingPrice < (auction.getCurrentBiddingPrice() + 1000)) {
                 throw new ValidationException(BiddingErrorCode.BIDDING_PRICE_NOT_HIGH_ENOUGH);
             }
         }
