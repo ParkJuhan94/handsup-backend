@@ -149,7 +149,7 @@ Fixtures in `core/src/testFixtures/java/dev/handsup/fixture/`:
 **주의 / 다음 작업**
 - ⚠️ 운영은 `ddl-auto: validate`라 인덱스가 자동 생성되지 않는다. 배포 전 운영 DB에서 `CREATE INDEX idx_bidding_auction_price ON bidding (auction_id, bidding_price)`를 먼저 실행해야 함(미실행).
 - 실행 중인 측정 스크립트(`perf/run.sh`)를 수정하면 bash가 어긋난 위치부터 읽어 다른 분기가 실행될 수 있다. 측정 중에는 고치지 않는다.
-- 입찰 시 경매 상태·종료일 검증이 `validateBiddingPrice`에 없다(다른 곳에서 막는지 미확인).
+- 입찰 시 경매 상태·마감일 검증이 없던 것을 확인해 `Auction.validateBiddingAvailable`로 추가했다(상태 BIDDING 아님 `B_011`, 마감일 지남 `B_012`, 마감일 당일까지 입찰 가능). 서버가 꺼져 자정 스케줄러가 못 돌아도 마감 경매를 막는다.
 
 ### 2026-10-25 - Kafka 운영 전환(Redpanda 통합) 실제 수행
 **수행 내용**
