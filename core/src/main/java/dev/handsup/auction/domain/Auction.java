@@ -222,6 +222,17 @@ public class Auction extends TimeBaseEntity {
         }
     }
 
+    // 상태는 자정 스케줄러(endDate < 오늘이면 변경)가 바꾸므로, 서버가 꺼져 스케줄러가 못 돌았을 때를 위해 마감일도 함께 본다.
+    // 마감일 당일까지는 입찰할 수 있다(스케줄러와 같은 기준).
+    public void validateBiddingAvailable(LocalDate today) {
+        if (status != BIDDING) {
+            throw new ValidationException(BiddingErrorCode.NOT_BIDDING_AUCTION);
+        }
+        if (endDate.isBefore(today)) {
+            throw new ValidationException(BiddingErrorCode.AUCTION_BIDDING_CLOSED);
+        }
+    }
+
     public void validateNotSeller(User user) {
         if (getSeller().equals(user)) {
             throw new ValidationException(BiddingErrorCode.NOT_ALLOW_SELF_BIDDING);

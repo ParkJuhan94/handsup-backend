@@ -1,5 +1,7 @@
 package dev.handsup.bidding.service;
 
+import java.time.LocalDate;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -48,6 +50,7 @@ public class BiddingService {
         Auction auction = auctionService.getAuctionById(auctionId);
         int biddingPrice = request.biddingPrice();
 
+        auction.validateBiddingAvailable(LocalDate.now()); // 입찰 중인 경매이고 마감일이 지나지 않았는지 확인
         validateBiddingPrice(biddingPrice, auction); // 경매 입찰 최고가보다 입찰가 높은지 확인
         auction.updateCurrentBiddingPrice(biddingPrice); // 경매 입찰 최고가 갱신
         auction.increaseBiddingCount();

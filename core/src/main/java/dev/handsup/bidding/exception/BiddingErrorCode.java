@@ -20,7 +20,9 @@ public enum BiddingErrorCode implements ErrorCode {
     NOT_ALLOW_SELF_BIDDING("판매자는 자신의 경매에 입찰을 할 수 없습니다.", "B_008"),
     NOT_FOUND_BIDDING_BY_AUCTION_AND_BIDDER(
         "경매 아이디와 입찰자 아이디에 해당하는 입찰이 존재하지 않습니다.", "B_009"),
-    NOT_FOUND_NEXT_BIDDING("다음 아이디의 입찰이 존재하지 않습니다.", "B_010");
+    NOT_FOUND_NEXT_BIDDING("다음 아이디의 입찰이 존재하지 않습니다.", "B_010"),
+    NOT_BIDDING_AUCTION("입찰 중인 경매가 아닙니다.", "B_011"),
+    AUCTION_BIDDING_CLOSED("입찰 마감일이 지난 경매입니다.", "B_012");
 
     private final String message;
     private final String code;

@@ -1,5 +1,6 @@
 package dev.handsup.bidding.repository;
 
+import java.time.LocalDate;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import dev.handsup.auction.domain.Auction;
 import dev.handsup.auction.domain.product.product_category.ProductCategory;
@@ -57,7 +59,9 @@ class BiddingConcurrencyTest extends TestContainerSupport {
     void setUp() {
         ProductCategory productCategory = productCategoryRepository.save(
             ProductCategory.from("디지털 기기"));
-        auction = auctionRepository.save(AuctionFixture.auction(productCategory));
+        Auction newAuction = AuctionFixture.auction(productCategory);
+        ReflectionTestUtils.setField(newAuction, "endDate", LocalDate.now().plusDays(1)); // 픽스처 마감일은 이미 지났다
+        auction = auctionRepository.save(newAuction);
         user = userRepository.save(UserFixture.user1());
     }
 
