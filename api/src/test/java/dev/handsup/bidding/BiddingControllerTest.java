@@ -9,6 +9,7 @@ import static org.springframework.http.MediaType.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -85,10 +86,12 @@ class BiddingControllerTest extends ApiTestKafkaSupport {
         accessTokenOfBidder = jwtProvider.createAccessToken(bidder.getId());
 
         auction1 = AuctionFixture.auction(seller);
+        ReflectionTestUtils.setField(auction1, "endDate", LocalDate.now().plusDays(1)); // 픽스처 마감일은 이미 지났다
         productCategoryRepository.save(auction1.getProduct().getProductCategory());
         auctionRepository.save(auction1);
 
         auction2 = AuctionFixture.auction(seller);
+        ReflectionTestUtils.setField(auction2, "endDate", LocalDate.now().plusDays(1));
         ReflectionTestUtils.setField(auction2, "id", 2L);
         productCategoryRepository.save(auction2.getProduct().getProductCategory());
         auctionRepository.save(auction2);

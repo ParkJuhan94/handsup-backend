@@ -1,14 +1,18 @@
 package dev.handsup.bidding.service;
 
+import static dev.handsup.bidding.exception.BiddingErrorCode.AUCTION_BIDDING_CLOSED;
 import static dev.handsup.bidding.exception.BiddingErrorCode.BIDDING_PRICE_LESS_THAN_INIT_PRICE;
 import static dev.handsup.bidding.exception.BiddingErrorCode.BIDDING_PRICE_NOT_HIGH_ENOUGH;
+import static dev.handsup.bidding.exception.BiddingErrorCode.NOT_BIDDING_AUCTION;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.verify;
+import static org.mockito.Mockito.never;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -126,6 +130,7 @@ class BiddingServiceTest {
     void registerBidding_Success() {
         // given
         RegisterBiddingRequest request = RegisterBiddingRequest.from(20000);
+        ReflectionTestUtils.setField(auction, "endDate", LocalDate.now().plusDays(1)); // 픽스처 마감일(2022-10-18)은 이미 지났다
 
         given(auctionService.getAuctionById(auction.getId())).willReturn(auction);
 
@@ -143,6 +148,46 @@ class BiddingServiceTest {
         // then
         assertThat(response).isNotNull();
         verify(biddingRepository).save(any(Bidding.class));
+    }
+
+    @Test
+    @DisplayName("[입찰 중이 아닌 경매(거래 중 등)에는 입찰할 수 없다]")
+    void registerBidding_AuctionNotInBidding_ThrowsException() {
+        // given
+        ReflectionTestUtils.setField(auction, "endDate", LocalDate.now().plusDays(1));
+        ReflectionTestUtils.setField(auction, "status", AuctionStatus.TRADING);
+        given(auctionService.getAuctionById(auction.getId())).willReturn(auction);
+
+        // when & then
+        assertThatThrownBy(() -> biddingService.registerBidding(RegisterBiddingRequest.from(20000), auction.getId(), user))
+            .isInstanceOf(ValidationException.class)
+            .hasMessageContaining(NOT_BIDDING_AUCTION.getMessage());
+        verify(biddingRepository, never()).save(any(Bidding.class));
+    }
+
+    @Test
+    @DisplayName("[마감일이 지난 경매에는 상태가 아직 입찰 중이어도 입찰할 수 없다]")
+    void registerBidding_ExpiredAuction_ThrowsException() {
+        // given: 서버가 꺼져 자정 스케줄러가 상태를 바꾸지 못한 경우
+        ReflectionTestUtils.setField(auction, "endDate", LocalDate.now().minusDays(1));
+        given(auctionService.getAuctionById(auction.getId())).willReturn(auction);
+
+        // when & then
+        assertThatThrownBy(() -> biddingService.registerBidding(RegisterBiddingRequest.from(20000), auction.getId(), user))
+            .isInstanceOf(ValidationException.class)
+            .hasMessageContaining(AUCTION_BIDDING_CLOSED.getMessage());
+        verify(biddingRepository, never()).save(any(Bidding.class));
+    }
+
+    @Test
+    @DisplayName("[마감일 당일까지는 입찰할 수 있다]")
+    void validateBiddingAvailable_OnEndDate_Passes() {
+        // given
+        LocalDate today = LocalDate.now();
+        ReflectionTestUtils.setField(auction, "endDate", today);
+
+        // when & then
+        assertThatCode(() -> auction.validateBiddingAvailable(today)).doesNotThrowAnyException();
     }
 
     @Test
