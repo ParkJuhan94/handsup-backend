@@ -10,5 +10,6 @@ WITH RECURSIVE a(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM a WHERE i < 5000),
 SELECT NOW(), NOW(), 10000 + 1000 * n, 'WAITING', i, 1 FROM a CROSS JOIN j;
 
 -- 경매 쪽 비정규화 값(현재가, 입찰 수)을 입찰 이력과 일치시킨다. 최고가 = 10000 + 1000*100 = 110000
-UPDATE auction SET bidding_count = 100, current_bidding_price = 110000, auction_status = 'BIDDING' WHERE auction_id BETWEEN 1 AND 5000;
+-- 마감일도 넉넉히 미래로 맞춘다(입찰 시 마감일 검증이 있어, 시드 시점의 마감일이 지나면 입찰이 전부 거절된다)
+UPDATE auction SET bidding_count = 100, current_bidding_price = 110000, auction_status = 'BIDDING', end_date = CURDATE() + INTERVAL 60 DAY WHERE auction_id BETWEEN 1 AND 5000;
 SELECT COUNT(*) AS bids, (SELECT COUNT(*) FROM auction WHERE bidding_count = 100) AS auctions FROM bidding;
