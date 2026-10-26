@@ -24,13 +24,19 @@ case "${1:-}" in
     dir="${2:-.}"; (cd "$dir" && ./gradlew :api:bootJar -x test -q) && ls "$dir"/api/build/libs/*.jar ;;
   start)
     mode="$2"; jar="${3:-$(ls api/build/libs/api-*-SNAPSHOT.jar | head -1)}"
+    # 이전 앱이 종료되는 동안 새 앱이 뜨면 준비 확인이 옛 앱에 통과해, 다른 jar/모드를 재는 일이 생긴다. 포트가 비길 기다린다
+    for _ in $(seq 30); do [ -z "$(lsof -nP -tiTCP:$PORT -sTCP:LISTEN || true)" ] && break; sleep 1; done
     docker exec handsup-redis redis-cli -a "$REDIS_HOST_PASSWORD" FLUSHALL >/dev/null 2>&1
     MYSQL_DATABASE=handsup_perf SERVER_PORT=$PORT SPRING_JPA_SHOW_SQL=false \
       LOGGING_LEVEL_ORG_HIBERNATE_SQL=warn LOGGING_LEVEL_ORG_HIBERNATE_TOOL_HBM2DDL=warn \
       LOGGING_LEVEL_ROOT=warn LOGGING_LEVEL_ORG_SPRINGFRAMEWORK=warn \
       nohup java $JAVA_OPTS_FIXED -Dperf.cache-mode="$mode" -jar "$jar" > "perf/results/app-$mode.log" 2>&1 &
+    pid=$!
     for _ in $(seq 60); do
-      [ "$(curl -s -o /dev/null -w '%{http_code}' "localhost:$PORT/api/auctions/recommend?sort=BOOKMARK")" = 200 ] && { echo "app ready ($mode)"; exit 0; }
+      kill -0 "$pid" 2>/dev/null || { echo "app exited early"; tail -20 "perf/results/app-$mode.log"; exit 1; }
+      # 응답하는 서버가 방금 띄운 프로세스인지(포트를 쥔 PID) 확인한다
+      [ "$(lsof -nP -tiTCP:$PORT -sTCP:LISTEN | head -1)" = "$pid" ] && \
+      [ "$(curl -s -o /dev/null -w '%{http_code}' "localhost:$PORT/api/auctions/recommend?sort=BOOKMARK")" = 200 ] && { echo "app ready ($mode, pid $pid)"; exit 0; }
       sleep 2
     done
     echo "app failed to start"; tail -20 "perf/results/app-$mode.log"; exit 1 ;;
