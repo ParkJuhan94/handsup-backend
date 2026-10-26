@@ -10,6 +10,7 @@ const LABEL = __ENV.LABEL || 'unlabeled';
 const RATE = parseInt(__ENV.RATE || '200');
 const DURATION = __ENV.DURATION || '60s';
 const WARMUP = __ENV.WARMUP || '15s';
+const NO_WARMUP = __ENV.NO_WARMUP === '1'; // 캐시가 빈 상태(콜드 스타트)부터 재려면 워밍업 없이 시작
 const RESULT_DIR = __ENV.RESULT_DIR || 'perf/results';
 
 // 키 공간: 정렬 4 x 지역 26(전체 1 + 구 5 + 동 20) x 페이지 3 = 312개. 앞쪽 키일수록 자주 불리는 편중 분포.
@@ -42,10 +43,12 @@ const arrival = (startTime, duration, phase) => ({
 
 export const options = {
   summaryTrendStats: ['avg', 'min', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
-  scenarios: {
-    warmup: arrival('0s', WARMUP, 'warmup'),
-    measure: arrival(`${parseInt(WARMUP) + 5}s`, DURATION, 'measure'),
-  },
+  scenarios: NO_WARMUP
+    ? { measure: arrival('0s', DURATION, 'measure') }
+    : {
+      warmup: arrival('0s', WARMUP, 'warmup'),
+      measure: arrival(`${parseInt(WARMUP) + 5}s`, DURATION, 'measure'),
+    },
   thresholds: {
     'http_req_failed{phase:measure}': ['rate<0.01'],
     'http_req_duration{phase:measure}': ['p(95)<2000'],
